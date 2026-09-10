@@ -46,28 +46,29 @@ export const numberOfDaysInclusive = (startDate, endDate) => {
   return Math.round((end.getTime() - start.getTime()) / DAY_IN_MS) + 1
 }
 
-export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new Date()) => {
+export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new Date(), customStartDate = '', customEndDate = '') => {
   const today = parseLocalDate(anchorDate) ?? new Date()
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
   if (periodType === 'custom') {
+    const customStart = parseLocalDate(customStartDate) ?? today
+    const customEnd = parseLocalDate(customEndDate) ?? customStart
+    const safeEnd = customEnd < customStart ? customStart : customEnd
+
     return {
-      startDate: formatDateInput(today),
-      endDate: formatDateInput(today),
-      totalDays: 1,
+      startDate: formatDateInput(customStart),
+      endDate: formatDateInput(safeEnd),
+      totalDays: numberOfDaysInclusive(customStart, safeEnd),
     }
   }
 
-  const periodDays = periodType === '7_days' ? 7 : periodType === '15_days' ? 15 : periodType === '30_days' ? 30 : 15
-  const endDay = Math.min(periodDays, monthEnd.getDate())
-  const startDate = monthStart
-  const endDate = new Date(today.getFullYear(), today.getMonth(), endDay)
+  const periodDays = periodType === '7_days' ? 7 : periodType === '30_days' ? 30 : 15
+  const startDate = today
+  const endDate = addDays(startDate, periodDays - 1)
 
   return {
     startDate: formatDateInput(startDate),
     endDate: formatDateInput(endDate),
-    totalDays: numberOfDaysInclusive(startDate, endDate),
+    totalDays: periodDays,
   }
 }
 
@@ -80,16 +81,17 @@ export const getActiveBudgetForCategory = ({ categoryId, budgets = [], today = n
 
   return budgets
     .filter((budget) => String(budget.categoryId ?? '') === String(categoryId))
-    .find((budget) => {
+    .filter((budget) => {
       const startDate = parseLocalDate(budget.startDate)
       const endDate = parseLocalDate(budget.endDate)
 
-      if (!startDate || !endDate) {
-        return false
-      }
-
-      return currentDate >= startDate && currentDate <= endDate
-    }) ?? null
+      return startDate && endDate && currentDate >= startDate && currentDate <= endDate
+    })
+    .sort((a, b) => {
+      const createdA = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
+      const createdB = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime()
+      return createdB - createdA
+    })[0] ?? null
 }
 
 const matchesCategory = (expenseCategory, categoryName, categoryId) => {
@@ -116,8 +118,9 @@ export const calculateCategoryBudgetMetrics = ({
   const categoryId = category?.id ?? ''
   const categoryName = category?.name ?? ''
   const totalBudget = Number(amount ?? 0)
-  const selectedStart = parseLocalDate(startDate) || parseLocalDate(getBudgetRangeForPeriod(periodType, today).startDate)
-  const selectedEnd = parseLocalDate(endDate) || parseLocalDate(getBudgetRangeForPeriod(periodType, today).endDate)
+  const fallbackRange = getBudgetRangeForPeriod(periodType, today)
+  const selectedStart = parseLocalDate(startDate) || parseLocalDate(fallbackRange.startDate)
+  const selectedEnd = parseLocalDate(endDate) || parseLocalDate(fallbackRange.endDate)
   const currentDate = parseLocalDate(today) ?? new Date()
 
   const spent = (expenses ?? []).reduce((sum, expense) => {
