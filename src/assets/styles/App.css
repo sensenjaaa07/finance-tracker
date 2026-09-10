@@ -52,7 +52,10 @@
         width: 100%;
         max-width: 100%;
         height: auto;
-        position: relative;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        align-self: stretch;
     }
     .content-container > section { min-height: auto; }
 }
