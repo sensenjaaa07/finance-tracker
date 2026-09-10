@@ -15,13 +15,91 @@ import filterExpensesByDate from './services/filterExpensesByDate.js'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
+const createMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+const buildSampleData = () => {
+  const today = new Date()
+  const currentMonth = createMonthKey(today)
+  const previousMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const previousMonth = createMonthKey(previousMonthDate)
+
+  const categoryDefinitions = [
+    { id: 'category-housing', name: 'Housing' },
+    { id: 'category-food', name: 'Food' },
+    { id: 'category-transport', name: 'Transport' },
+    { id: 'category-savings', name: 'Savings' },
+    { id: 'category-leisure', name: 'Leisure' },
+  ]
+
+  const currentCycleKey = `${currentMonth}-monthly`
+  const previousCycleKey = `${previousMonth}-monthly`
+
+  const currentCategoryEntries = [
+    { id: 'category-housing', name: 'Housing', amount: 14500 },
+    { id: 'category-food', name: 'Food', amount: 6500 },
+    { id: 'category-transport', name: 'Transport', amount: 2800 },
+    { id: 'category-savings', name: 'Savings', amount: 9000 },
+    { id: 'category-leisure', name: 'Leisure', amount: 3500 },
+  ]
+
+  const previousCategoryEntries = [
+    { id: 'category-housing', name: 'Housing', amount: 14000 },
+    { id: 'category-food', name: 'Food', amount: 6100 },
+    { id: 'category-transport', name: 'Transport', amount: 2600 },
+    { id: 'category-savings', name: 'Savings', amount: 8500 },
+    { id: 'category-leisure', name: 'Leisure', amount: 3200 },
+  ]
+
+  const incomeEntries = [
+    { id: 'income-salary-1', title: 'Main Salary', amount: 60000, date: new Date(today.getFullYear(), today.getMonth(), 1) },
+    { id: 'income-salary-2', title: 'Side Freelance', amount: 12000, date: new Date(today.getFullYear(), today.getMonth(), 15) },
+    { id: 'income-salary-3', title: 'Previous Salary', amount: 58000, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 1) },
+  ]
+
+  const expenseEntries = [
+    { id: 'expense-rent', title: 'Apartment Rent', amount: 14500, date: new Date(today.getFullYear(), today.getMonth(), 2), category: 'Housing' },
+    { id: 'expense-groceries', title: 'Groceries', amount: 4200, date: new Date(today.getFullYear(), today.getMonth(), 5), category: 'Food' },
+    { id: 'expense-commute', title: 'Fuel', amount: 1600, date: new Date(today.getFullYear(), today.getMonth(), 8), category: 'Transport' },
+    { id: 'expense-dining', title: 'Restaurant', amount: 2100, date: new Date(today.getFullYear(), today.getMonth(), 12), category: 'Food' },
+    { id: 'expense-movie', title: 'Streaming & Movie', amount: 700, date: new Date(today.getFullYear(), today.getMonth(), 16), category: 'Leisure' },
+    { id: 'expense-savings', title: 'Emergency Fund Deposit', amount: 5000, date: new Date(today.getFullYear(), today.getMonth(), 18), category: 'Savings' },
+    { id: 'expense-rent-prev', title: 'Apartment Rent', amount: 14000, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 2), category: 'Housing' },
+    { id: 'expense-groceries-prev', title: 'Groceries', amount: 3900, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 8), category: 'Food' },
+    { id: 'expense-transport-prev', title: 'Fuel', amount: 1500, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 11), category: 'Transport' },
+  ]
+
+  const netWorthEntriesByMonth = {
+    [currentCycleKey]: [
+      { id: 'networth-emergency', name: 'Emergency Fund', amount: 150000 },
+      { id: 'networth-investment', name: 'Investment Account', amount: 32000 },
+    ],
+    [previousCycleKey]: [
+      { id: 'networth-emergency', name: 'Emergency Fund', amount: 145000 },
+      { id: 'networth-investment', name: 'Investment Account', amount: 30000 },
+    ],
+  }
+
+  return {
+    expenseEntries,
+    incomeEntries,
+    categoryDefinitions,
+    categoryEntriesByMonth: {
+      [currentCycleKey]: currentCategoryEntries,
+      [previousCycleKey]: previousCategoryEntries,
+    },
+    netWorthEntriesByMonth,
+  }
+}
+
+const initialSampleData = buildSampleData()
+
 function App() {
   const [activeForm, setActiveForm] = useState(null)
-  const [expenseEntries, setExpenseEntries] = useState([])
-  const [incomeEntries, setIncomeEntries] = useState([])
-  const [categoryDefinitions, setCategoryDefinitions] = useState([])
-  const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState({})
-  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState({})
+  const [expenseEntries, setExpenseEntries] = useState(initialSampleData.expenseEntries)
+  const [incomeEntries, setIncomeEntries] = useState(initialSampleData.incomeEntries)
+  const [categoryDefinitions, setCategoryDefinitions] = useState(initialSampleData.categoryDefinitions)
+  const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(initialSampleData.categoryEntriesByMonth)
+  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(initialSampleData.netWorthEntriesByMonth)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')

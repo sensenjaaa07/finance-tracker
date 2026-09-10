@@ -1,24 +1,24 @@
 import '../assets/styles/Dashboard.css'
 import Header from '../components/Header'
+import FinanceTrendChart from '../components/charts/FinanceTrendChart.jsx'
+import CategoryBreakdownChart from '../components/charts/CategoryBreakdownChart.jsx'
+import { buildCategoryBreakdownData, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
 import filterExpensesByDate from '../services/filterExpensesByDate.js'
-import { useState } from 'react'
-
-const formatCurrency = (amount) => `₱${amount.toFixed(2)}`
+import { useMemo, useState } from 'react'
 
 const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [rangeKey, setRangeKey] = useState('6m')
   const [visibleMetrics, setVisibleMetrics] = useState({
-    income: false,
     spent: true,
     cashLeft: true,
     allocated: false,
     availableToAllocate: true,
   })
-  const [metricOrder, setMetricOrder] = useState([
+  const [metricOrder] = useState([
     'cashLeft',
     'spent',
     'availableToAllocate',
-    'income',
     'allocated',
   ])
 
@@ -27,8 +27,56 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
     ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0).toISOString().slice(0, 10)
     : ''
 
-  const visibleExpenses = filterExpensesByDate(expenseEntries, monthStart, monthEnd)
-  const visibleIncome = filterExpensesByDate(incomeEntries, monthStart, monthEnd)
+  const matchesRange = (dateValue) => {
+    if (!selectedMonth || !dateValue) {
+      return false
+    }
+
+    const date = new Date(dateValue)
+
+    if (Number.isNaN(date.getTime())) {
+      return false
+    }
+
+    if (monthKeyFromDate(dateValue) !== selectedMonth) {
+      return false
+    }
+
+    if (rangeKey === 'month' || !rangeKey) {
+      return true
+    }
+
+    const day = date.getDate()
+
+    if (rangeKey === 'fortnightly-1') {
+      return day >= 1 && day <= 15
+    }
+
+    if (rangeKey === 'fortnightly-2') {
+      return day >= 16
+    }
+
+    return true
+  }
+
+  const rangeFilteredExpenses = useMemo(() => {
+    if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') {
+      return expenseEntries.filter((entry) => matchesRange(entry.date))
+    }
+
+    return filterExpensesByDate(expenseEntries, monthStart, monthEnd)
+  }, [expenseEntries, monthEnd, monthStart, rangeKey, selectedMonth])
+
+  const rangeFilteredIncome = useMemo(() => {
+    if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') {
+      return incomeEntries.filter((entry) => matchesRange(entry.date))
+    }
+
+    return filterExpensesByDate(incomeEntries, monthStart, monthEnd)
+  }, [incomeEntries, monthEnd, monthStart, rangeKey, selectedMonth])
+
+  const visibleExpenses = rangeFilteredExpenses
+  const visibleIncome = rangeFilteredIncome
 
   const filteredCategories = selectedCategory === 'all'
     ? categoryEntries
@@ -63,7 +111,6 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
   }
 
   const metricCards = [
-    { key: 'income', label: 'Income', value: formatCurrency(totalIncome) },
     { key: 'allocated', label: 'Allocated', value: formatCurrency(totalAllocated) },
     { key: 'availableToAllocate', label: 'Available to allocate', value: formatCurrency(totalAvailableToAllocate) },
     { key: 'spent', label: 'Spent', value: formatCurrency(totalSpent) },
@@ -71,6 +118,22 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
   ]
   const orderedMetricButtons = [...metricCards]
     .sort((a, b) => metricOrder.indexOf(a.key) - metricOrder.indexOf(b.key))
+
+  const trendData = useMemo(() => buildTrendData({
+    incomeEntries: rangeFilteredIncome,
+    expenseEntries: rangeFilteredExpenses,
+    selectedMonth,
+    rangeKey,
+  }), [rangeFilteredExpenses, rangeFilteredIncome, rangeKey, selectedMonth])
+
+  const categoryBreakdownData = useMemo(() => buildCategoryBreakdownData({
+    expenseEntries: rangeFilteredExpenses,
+    selectedMonth,
+    rangeKey,
+  }), [rangeFilteredExpenses, rangeKey, selectedMonth])
+
+  const totalActualExpense = trendData.reduce((total, entry) => total + Number(entry.actualExpenses ?? 0), 0)
+  const totalForecastExpense = trendData.reduce((total, entry) => total + Number(entry.forecastExpenses ?? 0), 0)
 
   return (
     <section>
@@ -112,6 +175,22 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
             ))}
           </div>
         </div>
+        <div className="dashboard-filter-group dashboard-range-group">
+          <label htmlFor="dashboard-range-filter">Range</label>
+          <select
+            id="dashboard-range-filter"
+            value={rangeKey}
+            onChange={(event) => setRangeKey(event.target.value)}
+          >
+            <option value="month">This month</option>
+            <option value="fortnightly-1">1–15</option>
+            <option value="fortnightly-2">16–end</option>
+            <option value="3m">Last 3 months</option>
+            <option value="6m">Last 6 months</option>
+            <option value="12m">Last 12 months</option>
+            <option value="year">This year</option>
+          </select>
+        </div>
       </div>
       <div className="dashboard-summary">
         {metricCards
@@ -124,6 +203,36 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
             </div>
           ))}
       </div>
+      <div className="analytics-grid">
+        <div className="analytics-card analytics-card-wide">
+          <div className="chart-header">
+            <div>
+              <p className="chart-eyebrow">Financial performance</p>
+              <h2>Actual Expenses vs Forecast Expenses</h2>
+            </div>
+            <div className="chart-summary-inline">
+              <span>Actual expenses</span>
+              <strong>{formatCurrency(totalActualExpense)}</strong>
+            </div>
+          </div>
+          <FinanceTrendChart data={trendData} />
+        </div>
+
+        <div className="analytics-card">
+          <div className="chart-header">
+            <div>
+              <p className="chart-eyebrow">Spending mix</p>
+              <h2>Expenses by Category</h2>
+            </div>
+            <div className="chart-summary-inline">
+              <span>Forecast</span>
+              <strong>{formatCurrency(totalForecastExpense)}</strong>
+            </div>
+          </div>
+          <CategoryBreakdownChart data={categoryBreakdownData} />
+        </div>
+      </div>
+
       <div className="dashboard-section">
         <h2>{selectedCategory === 'all' ? 'Budget left by category' : `${selectedCategoryLabel} breakdown`}</h2>
         {filteredCategories.length === 0 ? (
