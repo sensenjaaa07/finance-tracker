@@ -13,7 +13,7 @@ const Navigation = () => {
     <>
       <button
         type="button"
-        className="mobile-nav-toggle"
+        className={`mobile-nav-toggle${isOpen ? ' mobile-nav-toggle-open' : ''}`}
         onClick={() => setIsOpen(previous => !previous)}
         aria-label={isOpen ? 'Close navigation' : 'Open navigation'}
         aria-expanded={isOpen}
