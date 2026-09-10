@@ -12,6 +12,7 @@ import createIncomeFromForm from './services/createIncomeFromForm.js'
 import createCategoriesFromForm from './services/createCategoriesFromForm.js'
 import createNetWorthFromForm from './services/createNetWorthFromForm.js'
 import filterExpensesByDate from './services/filterExpensesByDate.js'
+import useCloudSync from './services/useCloudSync.js'
 import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
@@ -59,6 +60,24 @@ function App() {
   useEffect(() => writeStorage(STORAGE_KEYS.categoryEntries, categoryEntriesByMonth), [categoryEntriesByMonth])
   useEffect(() => writeStorage(STORAGE_KEYS.netWorth, netWorthEntriesByMonth), [netWorthEntriesByMonth])
   useEffect(() => writeStorage(STORAGE_KEYS.budgets, budgets), [budgets])
+
+  const cloudData = {
+    expenses: expenseEntries,
+    income: incomeEntries,
+    categories: categoryDefinitions,
+    categoryEntries: categoryEntriesByMonth,
+    netWorth: netWorthEntriesByMonth,
+    budgets,
+  }
+
+  useCloudSync(cloudData, {
+    setExpenseEntries,
+    setIncomeEntries,
+    setCategoryDefinitions,
+    setCategoryEntriesByMonth,
+    setNetWorthEntriesByMonth,
+    setBudgets,
+  })
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) return ''
