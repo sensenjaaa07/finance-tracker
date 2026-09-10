@@ -82,8 +82,6 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
   const daysElapsed = isBeforeStart ? 0 : isAfterEnd ? totalDays : numberOfDaysInclusive(selectedStart, currentDate)
   const remainingDays = isBeforeStart ? totalDays : isAfterEnd ? 0 : numberOfDaysInclusive(currentDate, selectedEnd)
   const originalDailyAllowance = totalDays > 0 ? totalBudget / totalDays : 0
-  const currentDailyAllowance = remainingDays > 0 && remainingBudget >= 0 ? remainingBudget / remainingDays : 0
-  const percentageUsed = totalBudget > 0 ? (spent / totalBudget) * 100 : 0
 
   const todaysExpenses = expenses.reduce((sum, expense) => {
     const expenseDate = parseLocalDate(expense.date)
@@ -91,9 +89,32 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     return sum + Number(expense.amount ?? 0)
   }, 0)
 
+  // Today's allowance includes any surplus or excess carried forward from
+  // previous days. After today's spending, the remaining budget is spread
+  // across the future days so the recommended allowance updates dynamically.
+  const futureDays = Math.max(remainingDays - 1, 0)
+  const todaysAllowance = remainingDays > 0 && remainingBudget + todaysExpenses >= 0
+    ? (remainingBudget + todaysExpenses) / remainingDays
+    : 0
+  const nextDailyAllowance = futureDays > 0 && remainingBudget >= 0
+    ? remainingBudget / futureDays
+    : 0
+  const currentDailyAllowance = todaysExpenses > 0 && futureDays > 0
+    ? nextDailyAllowance
+    : remainingDays > 0 && remainingBudget >= 0
+      ? remainingBudget / remainingDays
+      : 0
+
+  const percentageUsed = totalBudget > 0 ? (spent / totalBudget) * 100 : 0
   const recommendedDailySpend = remainingBudget >= 0 ? currentDailyAllowance : 0
-  const dailyDifference = todaysExpenses - recommendedDailySpend
-  const dailyStatus = recommendedDailySpend <= 0 ? (todaysExpenses > 0 ? 'over' : 'on_track') : dailyDifference < 0 ? 'under' : dailyDifference > 0 ? 'over' : 'on_track'
+  const dailyDifference = todaysExpenses - todaysAllowance
+  const dailyStatus = todaysAllowance <= 0
+    ? (todaysExpenses > 0 ? 'over' : 'on_track')
+    : dailyDifference < 0
+      ? 'under'
+      : dailyDifference > 0
+        ? 'over'
+        : 'on_track'
 
   let status = 'active'
   if (remainingBudget < 0) status = 'over_budget'
@@ -111,6 +132,8 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     daysElapsed,
     remainingDays,
     originalDailyAllowance,
+    todaysAllowance,
+    nextDailyAllowance,
     currentDailyAllowance: remainingBudget < 0 ? 0 : currentDailyAllowance,
     percentageUsed,
     todaysExpenses,
