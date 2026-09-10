@@ -14,6 +14,7 @@
     min-width: 0;
     width: 100%;
     max-width: 100%;
+    margin-left: clamp(220px, 22vw, 280px);
     background-color: var(--bg-main);
 }
 
@@ -47,6 +48,9 @@
 
 @media (max-width: 760px) {
     .app-container { flex-direction: column; }
+    .content-container {
+        margin-left: 0;
+    }
     /* Keep the closed navigation out of the document flow. When open,
        Navigation.css supplies the fixed overlay panel dimensions and styling. */
     .app-container > .navigation-container:not(.mobile-nav-open) {
@@ -58,7 +62,8 @@
         flex: 0 0 0;
         position: fixed;
         top: 0;
-        left: 0;
+        right: 0;
+        left: auto;
         overflow: visible;
         border: 0;
         box-shadow: none;
