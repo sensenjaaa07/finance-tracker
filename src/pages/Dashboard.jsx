@@ -248,8 +248,6 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
             onChange={(event) => setRangeKey(event.target.value)}
           >
             <option value="month">This month</option>
-            <option value="fortnightly-1">1–15</option>
-            <option value="fortnightly-2">16–end</option>
             <option value="3m">Last 3 months</option>
             <option value="6m">Last 6 months</option>
             <option value="12m">Last 12 months</option>
