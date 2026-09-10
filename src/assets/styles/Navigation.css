@@ -213,12 +213,17 @@ nav ul li a.active {
         flex: none;
         padding: var(--spacing-xl) var(--spacing-md);
         transform: translateX(-105%);
-        transition: transform 180ms ease-out;
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 180ms ease-out, visibility 0s linear 180ms;
         box-shadow: var(--shadow-lg);
     }
 
     aside.navigation-container.mobile-nav-open {
         transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
+        transition: transform 180ms ease-out, visibility 0s linear 0s;
     }
 
     .logo-container {
