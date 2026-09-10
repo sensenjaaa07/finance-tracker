@@ -182,6 +182,11 @@ nav ul li a.active {
         font-size: 1.1rem;
     }
 
+    .mobile-nav-toggle.mobile-nav-toggle-open {
+        left: auto;
+        right: 14px;
+    }
+
     .mobile-nav-toggle:focus-visible {
         outline: 3px solid rgba(16, 185, 129, 0.25);
         outline-offset: 2px;
@@ -214,11 +219,6 @@ nav ul li a.active {
 
     aside.navigation-container.mobile-nav-open {
         transform: translateX(0);
-    }
-
-    .mobile-nav-open .mobile-nav-toggle {
-        left: auto;
-        right: 14px;
     }
 
     .logo-container {
