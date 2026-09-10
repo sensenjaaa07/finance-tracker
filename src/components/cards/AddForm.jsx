@@ -15,6 +15,14 @@ const formDefinitions = {
     nameField: { name: 'category', type: 'text', placeholder: 'Category Name' },
     amountField: { name: 'amount', type: 'number', placeholder: 'Amount' },
   },
+  Income: {
+    title: 'Income',
+    fields: [
+      { name: 'title', type: 'text', placeholder: 'Source' },
+      { name: 'amount', type: 'number', placeholder: 'Amount' },
+      { name: 'date', type: 'date', placeholder: 'Date' },
+    ],
+  },
   'Net-Worth': {
     title: 'Savings',
     nameField: { name: 'netWorthName', type: 'text', placeholder: 'Account Name' },
@@ -59,14 +67,14 @@ const AddForm = ({ formType, entries = [], onSubmit, onClose }) => {
             </select>
           </>
         )}
-        {formType === 'Expenses' && formDefinition.fields.map((field) => (
+        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => (
           <input key={field.name} {...field} required />
         ))}
-        {formType !== 'Expenses' && entryAction === 'new' && (
+        {formType !== 'Expenses' && formType !== 'Income' && entryAction === 'new' && (
           <input {...formDefinition.nameField} required />
         )}
-        {formType !== 'Expenses' && (
-          <input {...formDefinition.amountField} min="0.01" step="0.01" required />
+        {formType !== 'Expenses' && formType !== 'Income' && (
+          <input {...formDefinition.amountField} min="0.01" step="0.01" />
         )}
         <button type="submit">Add</button>
       </form>

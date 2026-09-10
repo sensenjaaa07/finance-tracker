@@ -15,7 +15,10 @@
 }
 
 .content-container > section {
+    max-width: 1400px;
     min-height: 100vh;
+    margin: 0 auto;
+    padding-bottom: var(--spacing-xl);
     animation: content-enter var(--transition-normal) ease-out both;
 }
 
@@ -56,6 +59,7 @@
 
     .content-container > section {
         min-height: auto;
+        padding-bottom: var(--spacing-lg);
     }
 }
 

@@ -2,9 +2,10 @@ function createCategoriesFromForm(event) {
 	const form = event.target
 	const selectedEntryId = form.entryAction.value
 	const name = form.category?.value.trim()
-	const amount = Number(form.amount.value)
+	const rawAmount = form.amount?.value
+	const amount = rawAmount === undefined || rawAmount === '' ? 0 : Number(rawAmount)
 
-	if (!Number.isFinite(amount) || amount <= 0 || (selectedEntryId === 'new' && !name)) {
+	if ((selectedEntryId === 'new' && !name) || (rawAmount !== undefined && rawAmount !== '' && (!Number.isFinite(amount) || amount <= 0))) {
 		return null
 	}
 
