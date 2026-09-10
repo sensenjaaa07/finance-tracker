@@ -254,6 +254,87 @@
 	transform: translateY(-1px);
 }
 
+.transactions-table-wrapper {
+	margin: 0 var(--spacing-lg) var(--spacing-lg);
+	overflow-x: auto;
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-lg);
+	background: var(--bg-card);
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.transactions-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+}
+
+.transactions-table th,
+.transactions-table td {
+	padding: 0.9rem 1rem;
+	text-align: left;
+	border-bottom: 1px solid var(--border-light);
+	white-space: nowrap;
+}
+
+.transactions-table th {
+	background: var(--bg-subtle, #f8fafc);
+	color: var(--text-muted);
+	font-size: 0.72rem;
+	font-weight: var(--font-weight-semibold);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.transactions-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.transactions-table tbody tr:hover {
+	background: rgba(15, 118, 110, 0.025);
+}
+
+.transaction-title-cell {
+	color: var(--text-primary);
+	font-weight: var(--font-weight-semibold);
+}
+
+.transactions-amount {
+	text-align: right !important;
+	font-weight: var(--font-weight-semibold);
+}
+
+.transactions-actions {
+	text-align: right !important;
+}
+
+.transaction-row-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+}
+
+.transaction-action-button {
+	padding: 0.4rem 0.7rem;
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-sm);
+	background: var(--bg-card);
+	color: var(--text-primary);
+	font: inherit;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+
+.transaction-action-button:hover {
+	background: var(--bg-subtle, #f8fafc);
+}
+
+.transaction-action-delete {
+	border-color: rgba(239, 68, 68, 0.2);
+	color: var(--color-secondary-dark);
+}
+
 @media (max-width: 1100px) {
 	.budget-list {
 		grid-template-columns: repeat(2, minmax(280px, 1fr));
@@ -273,5 +354,15 @@
 
 	.budget-card-metrics {
 		grid-template-columns: 1fr;
+	}
+
+	.transactions-table-wrapper {
+		margin-right: var(--spacing-md);
+		margin-left: var(--spacing-md);
+	}
+
+	.transactions-table th,
+	.transactions-table td {
+		padding: 0.75rem;
 	}
 }
