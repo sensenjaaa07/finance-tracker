@@ -12,9 +12,10 @@ import createIncomeFromForm from './services/createIncomeFromForm.js'
 import createCategoriesFromForm from './services/createCategoriesFromForm.js'
 import createNetWorthFromForm from './services/createNetWorthFromForm.js'
 import filterExpensesByDate from './services/filterExpensesByDate.js'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
+const STORAGE_KEY = 'finance-tracker-budgets'
 const createMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
 const buildSampleData = () => {
@@ -79,6 +80,15 @@ const buildSampleData = () => {
     ],
   }
 
+  const currentBudgetStart = new Date(today.getFullYear(), today.getMonth(), 1)
+  const currentBudgetEnd = new Date(today.getFullYear(), today.getMonth(), Math.min(15, new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()))
+
+  const defaultBudgets = [
+    { id: 'budget-food-current', categoryId: 'category-food', amount: 3000, periodType: '15_days', startDate: currentBudgetStart.toISOString().slice(0, 10), endDate: currentBudgetEnd.toISOString().slice(0, 10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'budget-housing-current', categoryId: 'category-housing', amount: 12000, periodType: '30_days', startDate: currentBudgetStart.toISOString().slice(0, 10), endDate: new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: 'budget-transport-current', categoryId: 'category-transport', amount: 2500, periodType: '15_days', startDate: currentBudgetStart.toISOString().slice(0, 10), endDate: currentBudgetEnd.toISOString().slice(0, 10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  ]
+
   return {
     expenseEntries,
     incomeEntries,
@@ -88,6 +98,7 @@ const buildSampleData = () => {
       [previousCycleKey]: previousCategoryEntries,
     },
     netWorthEntriesByMonth,
+    budgets: defaultBudgets,
   }
 }
 
@@ -100,9 +111,27 @@ function App() {
   const [categoryDefinitions, setCategoryDefinitions] = useState(initialSampleData.categoryDefinitions)
   const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(initialSampleData.categoryEntriesByMonth)
   const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(initialSampleData.netWorthEntriesByMonth)
+  const [budgets, setBudgets] = useState(() => {
+    if (typeof window === 'undefined') {
+      return initialSampleData.budgets
+    }
+
+    try {
+      const storedBudgets = window.localStorage.getItem(STORAGE_KEY)
+      return storedBudgets ? JSON.parse(storedBudgets) : initialSampleData.budgets
+    } catch {
+      return initialSampleData.budgets
+    }
+  })
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(budgets))
+    }
+  }, [budgets])
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) {
@@ -412,7 +441,7 @@ function App() {
       <Navigation />
       <main className="content-container">
         <Routes>
-          <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} incomeEntries={filteredIncomeEntries} categoryEntries={categoryEntries} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
+          <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
           <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} />} />
           <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} />} />
           <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
