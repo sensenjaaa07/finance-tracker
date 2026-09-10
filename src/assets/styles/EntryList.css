@@ -55,6 +55,11 @@
 
 .budget-list {
 	align-items: stretch;
+	grid-template-columns: repeat(3, minmax(280px, 1fr));
+}
+
+.entry-list-item.budget-card {
+	min-width: 0;
 }
 
 .budget-card {
@@ -249,11 +254,21 @@
 	transform: translateY(-1px);
 }
 
+@media (max-width: 1100px) {
+	.budget-list {
+		grid-template-columns: repeat(2, minmax(280px, 1fr));
+	}
+}
+
 @media (max-width: 560px) {
 	.entry-list {
 		grid-template-columns: 1fr;
 		padding-right: var(--spacing-md);
 		padding-left: var(--spacing-md);
+	}
+
+	.budget-list {
+		grid-template-columns: 1fr;
 	}
 
 	.budget-card-metrics {
