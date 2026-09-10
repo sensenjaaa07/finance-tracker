@@ -1,0 +1,70 @@
+.app-container {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 100vh;
+    width: 100%;
+    background-color: var(--bg-surface);
+}
+
+.content-container {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    background-color: var(--bg-main);
+}
+
+.content-container > section {
+    min-height: 100vh;
+    animation: content-enter var(--transition-normal) ease-out both;
+}
+
+.expense-card-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: var(--spacing-md);
+    background-color: rgba(15, 23, 42, 0.36);
+    animation: overlay-enter var(--transition-fast) ease-out both;
+}
+
+@keyframes content-enter {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 760px) {
+    .app-container {
+        flex-direction: column;
+    }
+
+    .app-container > .navigation-container {
+        flex-basis: auto;
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    .content-container > section {
+        min-height: auto;
+    }
+}
+
+@keyframes overlay-enter {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
