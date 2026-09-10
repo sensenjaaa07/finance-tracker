@@ -4,11 +4,15 @@ import FinanceTrendChart from '../components/charts/FinanceTrendChart.jsx'
 import CategoryBreakdownChart from '../components/charts/CategoryBreakdownChart.jsx'
 import { buildCategoryBreakdownData, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
 import filterExpensesByDate from '../services/filterExpensesByDate.js'
+import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
 import { useMemo, useState } from 'react'
 
-const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
+const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [rangeKey, setRangeKey] = useState('6m')
+  const [budgetPeriod, setBudgetPeriod] = useState('15_days')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
   const [visibleMetrics, setVisibleMetrics] = useState({
     spent: true,
     cashLeft: true,
@@ -99,9 +103,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
     ? totalIncome - totalSpent
     : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
   const selectedCategoryLabel = selectedCategory === 'all' ? 'All categories' : selectedCategory
-  const totalAvailableToAllocate = selectedCategory === 'all'
-    ? totalIncome - totalAllocated
-    : totalIncome - totalAllocated
+  const totalAvailableToAllocate = totalIncome - totalAllocated
 
   const toggleMetric = (metricKey) => {
     setVisibleMetrics((previousState) => ({
@@ -134,6 +136,69 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
 
   const totalActualExpense = trendData.reduce((total, entry) => total + Number(entry.actualExpenses ?? 0), 0)
   const totalForecastExpense = trendData.reduce((total, entry) => total + Number(entry.forecastExpenses ?? 0), 0)
+
+  const budgetCategoryOptions = categoryEntries
+  const budgetCategory = selectedCategory === 'all' ? (budgetCategoryOptions[0] ?? null) : selectedCategoryEntry
+
+  const budgetMetrics = useMemo(() => {
+    if (!budgetCategory) {
+      return null
+    }
+
+    const activeBudget = getActiveBudgetForCategory({
+      categoryId: budgetCategory.id,
+      budgets,
+    })
+
+    if (activeBudget && budgetPeriod === activeBudget.periodType && budgetPeriod !== 'custom') {
+      return calculateCategoryBudgetMetrics({
+        category: budgetCategory,
+        amount: activeBudget.amount,
+        periodType: activeBudget.periodType,
+        startDate: activeBudget.startDate,
+        endDate: activeBudget.endDate,
+        expenses: expenseEntries,
+      })
+    }
+
+    const range = budgetPeriod === 'custom'
+      ? getBudgetRangeForPeriod('custom', new Date(), customStartDate, customEndDate)
+      : getBudgetRangeForPeriod(budgetPeriod)
+
+    const amount = activeBudget?.amount ?? budgetCategory.amount ?? 0
+
+    return calculateCategoryBudgetMetrics({
+      category: budgetCategory,
+      amount,
+      periodType: budgetPeriod,
+      startDate: budgetPeriod === 'custom' ? range.startDate : undefined,
+      endDate: budgetPeriod === 'custom' ? range.endDate : undefined,
+      expenses: expenseEntries,
+    })
+  }, [budgetCategory, budgetPeriod, budgets, customEndDate, customStartDate, expenseEntries])
+
+  const budgetPeriodLabel = budgetMetrics?.totalDays
+    ? `${budgetMetrics.totalDays} days`
+    : 'Custom range'
+
+  const formatBudgetDate = (dateValue) => {
+    if (!dateValue) return ''
+    return new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const dailyStatusMessage = !budgetMetrics
+    ? 'Select a category to see its daily budget.'
+    : budgetMetrics.status === 'over_budget'
+      ? `You are ${formatCurrency(Math.abs(budgetMetrics.remainingBudget))} over this budget.`
+      : budgetMetrics.status === 'not_started'
+        ? `Budget starts ${formatBudgetDate(budgetMetrics.startDate)}.`
+        : budgetMetrics.status === 'completed'
+          ? 'Budget period ended.'
+          : budgetMetrics.dailyStatus === 'over'
+            ? `You've exceeded today's recommended spending by ${formatCurrency(Math.abs(budgetMetrics.dailyDifference))}.`
+            : budgetMetrics.dailyStatus === 'on_track'
+              ? `You're at today's recommended spending of ${formatCurrency(budgetMetrics.recommendedDailySpend)}.`
+              : `You can spend up to ${formatCurrency(budgetMetrics.recommendedDailySpend)} today.`
 
   return (
     <section>
@@ -203,6 +268,96 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, onOpenAddFo
             </div>
           ))}
       </div>
+
+      <div className="daily-budget-section">
+        <div className="daily-budget-header">
+          <div>
+            <p className="chart-eyebrow">Daily budgeting</p>
+            <h2>How much can I spend?</h2>
+            <p className="daily-budget-description">Choose a category and period to calculate a safe daily spending amount from your remaining budget.</p>
+          </div>
+          {budgetMetrics?.status === 'over_budget' && <span className="daily-budget-status status-danger">Over budget</span>}
+          {budgetMetrics?.status === 'completed' && <span className="daily-budget-status status-neutral">Period ended</span>}
+          {budgetMetrics?.status === 'active' && budgetMetrics.dailyStatus === 'under' && <span className="daily-budget-status status-good">On track</span>}
+        </div>
+
+        <div className="daily-budget-controls">
+          <div className="dashboard-filter-group">
+            <label htmlFor="budget-category-select">Category</label>
+            <select id="budget-category-select" value={selectedCategory === 'all' ? (budgetCategory?.name ?? '') : selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+              {budgetCategoryOptions.map((category) => (
+                <option key={category.id} value={category.name}>{category.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="dashboard-filter-group">
+            <label htmlFor="budget-period-select">Budget period</label>
+            <select id="budget-period-select" value={budgetPeriod} onChange={(event) => setBudgetPeriod(event.target.value)}>
+              <option value="7_days">7 days</option>
+              <option value="15_days">15 days</option>
+              <option value="30_days">30 days</option>
+              <option value="custom">Custom date range</option>
+            </select>
+          </div>
+          {budgetPeriod === 'custom' && (
+            <>
+              <div className="dashboard-filter-group">
+                <label htmlFor="budget-start-date">Start date</label>
+                <input id="budget-start-date" type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} />
+              </div>
+              <div className="dashboard-filter-group">
+                <label htmlFor="budget-end-date">End date</label>
+                <input id="budget-end-date" type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} />
+              </div>
+            </>
+          )}
+        </div>
+
+        {!budgetCategory ? (
+          <div className="daily-budget-empty">Create a budget category first to use daily budgeting.</div>
+        ) : !budgetMetrics?.hasBudget ? (
+          <div className="daily-budget-empty">No budget amount is available for <strong>{budgetCategory.name}</strong>. Add a category budget to start tracking daily spending.</div>
+        ) : (
+          <>
+            <div className="daily-budget-grid">
+              <div className="daily-budget-primary">
+                <span>Recommended daily spending</span>
+                {budgetMetrics.status === 'over_budget' ? (
+                  <strong className="amount-negative">Over budget</strong>
+                ) : budgetMetrics.status === 'completed' ? (
+                  <strong>—</strong>
+                ) : (
+                  <strong>{formatCurrency(budgetMetrics.currentDailyAllowance)}<small>/day</small></strong>
+                )}
+                <p>{dailyStatusMessage}</p>
+              </div>
+              <div className="daily-budget-stat"><span>Total budget</span><strong>{formatCurrency(budgetMetrics.budgetAmount)}</strong></div>
+              <div className="daily-budget-stat"><span>Total spent</span><strong>{formatCurrency(budgetMetrics.spent)}</strong></div>
+              <div className="daily-budget-stat"><span>Remaining</span><strong className={budgetMetrics.remainingBudget < 0 ? 'amount-negative' : ''}>{formatCurrency(budgetMetrics.remainingBudget)}</strong></div>
+              <div className="daily-budget-stat"><span>Days elapsed</span><strong>{budgetMetrics.daysElapsed}</strong></div>
+              <div className="daily-budget-stat"><span>Days remaining</span><strong>{budgetMetrics.remainingDays}</strong></div>
+              <div className="daily-budget-stat"><span>Original daily allowance</span><strong>{formatCurrency(budgetMetrics.originalDailyAllowance)}</strong></div>
+              <div className="daily-budget-stat"><span>Today's spending</span><strong>{formatCurrency(budgetMetrics.todaysExpenses)}</strong></div>
+            </div>
+
+            <div className="daily-budget-progress-area">
+              <div className="daily-budget-progress-labels">
+                <span>{budgetCategory.name} · {budgetPeriodLabel}</span>
+                <strong>{Math.min(100, Math.max(0, budgetMetrics.percentageUsed)).toFixed(1)}% used</strong>
+              </div>
+              <div className="daily-budget-progress-track" role="progressbar" aria-valuenow={Math.min(100, Math.max(0, budgetMetrics.percentageUsed))} aria-valuemin="0" aria-valuemax="100" aria-label={`${budgetCategory.name} budget used`}>
+                <div className="daily-budget-progress-fill" style={{ width: `${Math.min(100, Math.max(0, budgetMetrics.percentageUsed))}%` }} />
+              </div>
+              <div className="daily-budget-progress-meta">
+                <span>{formatCurrency(budgetMetrics.spent)} spent</span>
+                <span>{formatBudgetDate(budgetMetrics.startDate)} – {formatBudgetDate(budgetMetrics.endDate)}</span>
+                <span>{formatCurrency(budgetMetrics.budgetAmount)} budget</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="analytics-grid">
         <div className="analytics-card analytics-card-wide">
           <div className="chart-header">
