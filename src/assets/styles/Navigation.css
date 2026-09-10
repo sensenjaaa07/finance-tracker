@@ -211,10 +211,14 @@ nav ul li a.active {
         max-width: 280px;
         height: 100vh;
         flex: none;
-        padding: var(--spacing-xl) var(--spacing-md);
+        box-sizing: border-box;
+        padding: 76px var(--spacing-md) var(--spacing-xl);
+        background-color: var(--bg-main);
+        border-right: 1px solid var(--border-light);
         transform: translateX(-105%);
         visibility: hidden;
         pointer-events: none;
+        overflow-y: auto;
         transition: transform 180ms ease-out, visibility 0s linear 180ms;
         box-shadow: var(--shadow-lg);
     }
