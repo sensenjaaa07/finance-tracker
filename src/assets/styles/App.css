@@ -47,15 +47,22 @@
 
 @media (max-width: 760px) {
     .app-container { flex-direction: column; }
+    /* The mobile navigation is an overlay controlled by Navigation.css.
+       It must not remain in the normal document flow or reserve screen space. */
     .app-container > .navigation-container {
-        flex-basis: auto;
-        width: 100%;
-        max-width: 100%;
-        height: auto;
-        position: sticky;
+        width: 0;
+        height: 0;
+        min-height: 0;
+        padding: 0;
+        margin: 0;
+        flex: 0 0 0;
+        position: fixed;
         top: 0;
-        z-index: 20;
-        align-self: stretch;
+        left: 0;
+        overflow: visible;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
     }
     .content-container > section { min-height: auto; }
 }
