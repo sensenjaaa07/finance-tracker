@@ -47,9 +47,9 @@
 
 @media (max-width: 760px) {
     .app-container { flex-direction: column; }
-    /* The mobile navigation is an overlay controlled by Navigation.css.
-       It must not remain in the normal document flow or reserve screen space. */
-    .app-container > .navigation-container {
+    /* Keep the closed navigation out of the document flow. When open,
+       Navigation.css supplies the fixed overlay panel dimensions and styling. */
+    .app-container > .navigation-container:not(.mobile-nav-open) {
         width: 0;
         height: 0;
         min-height: 0;
