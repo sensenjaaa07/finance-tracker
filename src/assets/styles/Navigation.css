@@ -216,6 +216,11 @@ nav ul li a.active {
         transform: translateX(0);
     }
 
+    .mobile-nav-open .mobile-nav-toggle {
+        left: auto;
+        right: 14px;
+    }
+
     .logo-container {
         padding-inline: var(--spacing-xs);
     }
