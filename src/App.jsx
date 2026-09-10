@@ -15,137 +15,55 @@ import filterExpensesByDate from './services/filterExpensesByDate.js'
 import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
-const STORAGE_KEY = 'finance-tracker-budgets'
-const createMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+const STORAGE_KEYS = {
+  expenses: 'finance-tracker-expenses',
+  income: 'finance-tracker-income',
+  categories: 'finance-tracker-category-definitions',
+  categoryEntries: 'finance-tracker-category-entries',
+  netWorth: 'finance-tracker-net-worth',
+  budgets: 'finance-tracker-budgets',
+}
 
-const buildSampleData = () => {
-  const today = new Date()
-  const currentMonth = createMonthKey(today)
-  const previousMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-  const previousMonth = createMonthKey(previousMonthDate)
+const readStorage = (key, fallback) => {
+  if (typeof window === 'undefined') return fallback
 
-  const categoryDefinitions = [
-    { id: 'category-housing', name: 'Housing' },
-    { id: 'category-food', name: 'Food' },
-    { id: 'category-transport', name: 'Transport' },
-    { id: 'category-savings', name: 'Savings' },
-    { id: 'category-leisure', name: 'Leisure' },
-  ]
-
-  const currentCycleKey = `${currentMonth}-monthly`
-  const previousCycleKey = `${previousMonth}-monthly`
-
-  const currentCategoryEntries = [
-    { id: 'category-housing', name: 'Housing', amount: 14500 },
-    { id: 'category-food', name: 'Food', amount: 6500 },
-    { id: 'category-transport', name: 'Transport', amount: 2800 },
-    { id: 'category-savings', name: 'Savings', amount: 9000 },
-    { id: 'category-leisure', name: 'Leisure', amount: 3500 },
-  ]
-
-  const previousCategoryEntries = [
-    { id: 'category-housing', name: 'Housing', amount: 14000 },
-    { id: 'category-food', name: 'Food', amount: 6100 },
-    { id: 'category-transport', name: 'Transport', amount: 2600 },
-    { id: 'category-savings', name: 'Savings', amount: 8500 },
-    { id: 'category-leisure', name: 'Leisure', amount: 3200 },
-  ]
-
-  const incomeEntries = [
-    { id: 'income-salary-1', title: 'Main Salary', amount: 60000, date: new Date(today.getFullYear(), today.getMonth(), 1) },
-    { id: 'income-salary-2', title: 'Side Freelance', amount: 12000, date: new Date(today.getFullYear(), today.getMonth(), 15) },
-    { id: 'income-salary-3', title: 'Previous Salary', amount: 58000, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 1) },
-  ]
-
-  const expenseEntries = [
-    { id: 'expense-rent', title: 'Apartment Rent', amount: 14500, date: new Date(today.getFullYear(), today.getMonth(), 2), category: 'Housing' },
-    { id: 'expense-groceries', title: 'Groceries', amount: 4200, date: new Date(today.getFullYear(), today.getMonth(), 5), category: 'Food' },
-    { id: 'expense-commute', title: 'Fuel', amount: 1600, date: new Date(today.getFullYear(), today.getMonth(), 8), category: 'Transport' },
-    { id: 'expense-dining', title: 'Restaurant', amount: 2100, date: new Date(today.getFullYear(), today.getMonth(), 12), category: 'Food' },
-    { id: 'expense-movie', title: 'Streaming & Movie', amount: 700, date: new Date(today.getFullYear(), today.getMonth(), 16), category: 'Leisure' },
-    { id: 'expense-savings', title: 'Emergency Fund Deposit', amount: 5000, date: new Date(today.getFullYear(), today.getMonth(), 18), category: 'Savings' },
-    { id: 'expense-rent-prev', title: 'Apartment Rent', amount: 14000, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 2), category: 'Housing' },
-    { id: 'expense-groceries-prev', title: 'Groceries', amount: 3900, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 8), category: 'Food' },
-    { id: 'expense-transport-prev', title: 'Fuel', amount: 1500, date: new Date(previousMonthDate.getFullYear(), previousMonthDate.getMonth(), 11), category: 'Transport' },
-  ]
-
-  const netWorthEntriesByMonth = {
-    [currentCycleKey]: [
-      { id: 'networth-emergency', name: 'Emergency Fund', amount: 150000 },
-      { id: 'networth-investment', name: 'Investment Account', amount: 32000 },
-    ],
-    [previousCycleKey]: [
-      { id: 'networth-emergency', name: 'Emergency Fund', amount: 145000 },
-      { id: 'networth-investment', name: 'Investment Account', amount: 30000 },
-    ],
-  }
-
-  const currentBudgetStart = new Date(today.getFullYear(), today.getMonth(), 1)
-  const currentBudgetEnd = new Date(today.getFullYear(), today.getMonth(), Math.min(15, new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()))
-
-  const defaultBudgets = [
-    { id: 'budget-food-current', categoryId: 'category-food', amount: 3000, periodType: '15_days', startDate: currentBudgetStart.toISOString().slice(0, 10), endDate: currentBudgetEnd.toISOString().slice(0, 10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'budget-housing-current', categoryId: 'category-housing', amount: 12000, periodType: '30_days', startDate: currentBudgetStart.toISOString().slice(0, 10), endDate: new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'budget-transport-current', categoryId: 'category-transport', amount: 2500, periodType: '15_days', startDate: currentBudgetStart.toISOString().slice(0, 10), endDate: currentBudgetEnd.toISOString().slice(0, 10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  ]
-
-  return {
-    expenseEntries,
-    incomeEntries,
-    categoryDefinitions,
-    categoryEntriesByMonth: {
-      [currentCycleKey]: currentCategoryEntries,
-      [previousCycleKey]: previousCategoryEntries,
-    },
-    netWorthEntriesByMonth,
-    budgets: defaultBudgets,
+  try {
+    const stored = window.localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : fallback
+  } catch {
+    return fallback
   }
 }
 
-const initialSampleData = buildSampleData()
+const writeStorage = (key, value) => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(key, JSON.stringify(value))
+  }
+}
 
 function App() {
   const [activeForm, setActiveForm] = useState(null)
-  const [expenseEntries, setExpenseEntries] = useState(initialSampleData.expenseEntries)
-  const [incomeEntries, setIncomeEntries] = useState(initialSampleData.incomeEntries)
-  const [categoryDefinitions, setCategoryDefinitions] = useState(initialSampleData.categoryDefinitions)
-  const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(initialSampleData.categoryEntriesByMonth)
-  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(initialSampleData.netWorthEntriesByMonth)
-  const [budgets, setBudgets] = useState(() => {
-    if (typeof window === 'undefined') {
-      return initialSampleData.budgets
-    }
-
-    try {
-      const storedBudgets = window.localStorage.getItem(STORAGE_KEY)
-      return storedBudgets ? JSON.parse(storedBudgets) : initialSampleData.budgets
-    } catch {
-      return initialSampleData.budgets
-    }
-  })
+  const [expenseEntries, setExpenseEntries] = useState(() => readStorage(STORAGE_KEYS.expenses, []))
+  const [incomeEntries, setIncomeEntries] = useState(() => readStorage(STORAGE_KEYS.income, []))
+  const [categoryDefinitions, setCategoryDefinitions] = useState(() => readStorage(STORAGE_KEYS.categories, []))
+  const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(() => readStorage(STORAGE_KEYS.categoryEntries, {}))
+  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(() => readStorage(STORAGE_KEYS.netWorth, {}))
+  const [budgets, setBudgets] = useState(() => readStorage(STORAGE_KEYS.budgets, []))
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(budgets))
-    }
-  }, [budgets])
+  useEffect(() => writeStorage(STORAGE_KEYS.expenses, expenseEntries), [expenseEntries])
+  useEffect(() => writeStorage(STORAGE_KEYS.income, incomeEntries), [incomeEntries])
+  useEffect(() => writeStorage(STORAGE_KEYS.categories, categoryDefinitions), [categoryDefinitions])
+  useEffect(() => writeStorage(STORAGE_KEYS.categoryEntries, categoryEntriesByMonth), [categoryEntriesByMonth])
+  useEffect(() => writeStorage(STORAGE_KEYS.netWorth, netWorthEntriesByMonth), [netWorthEntriesByMonth])
+  useEffect(() => writeStorage(STORAGE_KEYS.budgets, budgets), [budgets])
 
   const getCycleKey = (monthValue, cycleMode) => {
-    if (!monthValue) {
-      return ''
-    }
-
-    if (cycleMode === 'fortnightly-1') {
-      return `${monthValue}-1-15`
-    }
-
-    if (cycleMode === 'fortnightly-2') {
-      return `${monthValue}-16-end`
-    }
-
+    if (!monthValue) return ''
+    if (cycleMode === 'fortnightly-1') return `${monthValue}-1-15`
+    if (cycleMode === 'fortnightly-2') return `${monthValue}-16-end`
     return `${monthValue}-monthly`
   }
 
@@ -158,48 +76,33 @@ function App() {
   const categoryEntries = categoryDefinitions.map((definition) => {
     const matchingEntries = monthCategoryEntries.filter((entry) => entry.id === definition.id || entry.name === definition.name)
     const totalAmount = matchingEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-
-    return matchingEntries.length > 0
-      ? { ...definition, amount: totalAmount }
-      : { ...definition, amount: 0 }
+    return matchingEntries.length > 0 ? { ...definition, amount: totalAmount } : { ...definition, amount: 0 }
   })
   const netWorthEntries = cycleKeysToDisplay.flatMap((key) => netWorthEntriesByMonth[key] ?? [])
 
   const getCycleRange = (monthValue, cycleMode) => {
-    if (!monthValue) {
-      return { monthStart: '', monthEnd: '' }
-    }
+    if (!monthValue) return { monthStart: '', monthEnd: '' }
 
     const year = Number(monthValue.slice(0, 4))
     const monthIndex = Number(monthValue.slice(5, 7))
     const lastDay = new Date(year, monthIndex, 0).getDate()
 
     if (cycleMode === 'fortnightly-1') {
-      return {
-        monthStart: `${monthValue}-01`,
-        monthEnd: `${monthValue}-15`,
-      }
+      return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-15` }
     }
 
     if (cycleMode === 'fortnightly-2') {
-      return {
-        monthStart: `${monthValue}-16`,
-        monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}`,
-      }
+      return { monthStart: `${monthValue}-16`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
     }
 
-    return {
-      monthStart: `${monthValue}-01`,
-      monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}`,
-    }
+    return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
   }
 
   const { monthStart, monthEnd } = getCycleRange(selectedMonth, budgetCycle)
-
   const filteredExpenseEntries = filterExpensesByDate(expenseEntries, monthStart, monthEnd)
   const filteredIncomeEntries = filterExpensesByDate(incomeEntries, monthStart, monthEnd)
-  const monthlyIncomeTotal = filteredIncomeEntries.reduce((total, entry) => total + entry.amount, 0)
-  const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + entry.amount, 0) + netWorthEntries.reduce((total, entry) => total + entry.amount, 0)
+  const monthlyIncomeTotal = filteredIncomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) + netWorthEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
 
   function openAddForm(formType) {
     setActiveForm(formType)
@@ -207,95 +110,71 @@ function App() {
 
   function updateCategoryAmount(categoryId, amount) {
     const safeAmount = Number(amount)
-
-    if (!Number.isFinite(safeAmount) || safeAmount < 0) {
-      return false
-    }
+    if (!Number.isFinite(safeAmount) || safeAmount < 0) return false
 
     const categoryDefinition = categoryDefinitions.find((entry) => entry.id === categoryId)
+    if (!categoryDefinition) return false
 
-    if (!categoryDefinition) {
-      return false
-    }
-
-    setCategoryEntriesByMonth(previousEntriesByMonth => ({
-      ...previousEntriesByMonth,
+    setCategoryEntriesByMonth(previous => ({
+      ...previous,
       [currentCycleKey]: [
-        ...(previousEntriesByMonth[currentCycleKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name),
+        ...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name),
         { ...categoryDefinition, amount: safeAmount },
       ],
     }))
-
     return true
   }
 
   function deleteCategoryEntry(categoryId) {
     const categoryDefinition = categoryDefinitions.find((entry) => entry.id === categoryId)
-
-    setCategoryDefinitions(previousEntries => previousEntries.filter((entry) => entry.id !== categoryId))
-    setCategoryEntriesByMonth(previousEntriesByMonth => {
-      const nextEntriesByMonth = { ...previousEntriesByMonth }
-
-      Object.keys(nextEntriesByMonth).forEach((key) => {
-        nextEntriesByMonth[key] = (nextEntriesByMonth[key] ?? []).filter((entry) => {
-          const matchesCategoryId = entry.id === categoryId
-          const matchesCategoryName = categoryDefinition ? entry.name === categoryDefinition.name : false
-          return !matchesCategoryId && !matchesCategoryName
-        })
+    setCategoryDefinitions(previous => previous.filter((entry) => entry.id !== categoryId))
+    setCategoryEntriesByMonth(previous => {
+      const next = { ...previous }
+      Object.keys(next).forEach((key) => {
+        next[key] = (next[key] ?? []).filter((entry) => entry.id !== categoryId && (!categoryDefinition || entry.name !== categoryDefinition.name))
       })
-
-      return nextEntriesByMonth
+      return next
     })
-
     return true
   }
 
   function updateExpenseEntry(expenseId, updatedEntry) {
-    setExpenseEntries(previousEntries => previousEntries.map((entry) => (
-      entry.id === expenseId ? { ...entry, ...updatedEntry } : entry
-    )))
+    setExpenseEntries(previous => previous.map((entry) => entry.id === expenseId ? { ...entry, ...updatedEntry } : entry))
   }
 
   function deleteExpenseEntry(expenseId) {
-    setExpenseEntries(previousEntries => previousEntries.filter((entry) => entry.id !== expenseId))
+    setExpenseEntries(previous => previous.filter((entry) => entry.id !== expenseId))
     return true
   }
 
   function updateIncomeEntry(incomeId, updatedEntry) {
-    setIncomeEntries(previousEntries => previousEntries.map((entry) => (
-      entry.id === incomeId ? { ...entry, ...updatedEntry } : entry
-    )))
+    setIncomeEntries(previous => previous.map((entry) => entry.id === incomeId ? { ...entry, ...updatedEntry } : entry))
   }
 
   function deleteIncomeEntry(incomeId) {
-    setIncomeEntries(previousEntries => previousEntries.filter((entry) => entry.id !== incomeId))
+    setIncomeEntries(previous => previous.filter((entry) => entry.id !== incomeId))
     return true
   }
 
   function updateNetWorthEntry(netWorthId, updatedEntry) {
     const nextAmount = Number(updatedEntry.amount)
     const nextName = updatedEntry.name?.trim() ?? ''
+    if (!Number.isFinite(nextAmount) || nextAmount < 0 || !nextName) return false
 
-    if (!Number.isFinite(nextAmount) || nextAmount < 0 || !nextName) {
-      return false
-    }
-
-    setNetWorthEntriesByMonth(previousEntriesByMonth => ({
-      ...previousEntriesByMonth,
-      [currentCycleKey]: (previousEntriesByMonth[currentCycleKey] ?? []).map((entry) => (
+    setNetWorthEntriesByMonth(previous => ({
+      ...previous,
+      [currentCycleKey]: (previous[currentCycleKey] ?? []).map((entry) => (
         entry.id === netWorthId ? { ...entry, name: nextName, amount: nextAmount } : entry
       )),
     }))
-
     return true
   }
 
   function deleteNetWorthEntry(netWorthId) {
-    setNetWorthEntriesByMonth(previousEntriesByMonth => ({
-      ...previousEntriesByMonth,
-      [currentCycleKey]: (previousEntriesByMonth[currentCycleKey] ?? []).filter((entry) => entry.id !== netWorthId),
+    setNetWorthEntriesByMonth(previous => ({
+      ...previous,
+      [currentCycleKey]: (previous[currentCycleKey] ?? []).filter((entry) => entry.id !== netWorthId),
     }))
-
     return true
   }
 
@@ -304,9 +183,8 @@ function App() {
 
     if (activeForm === 'Expenses') {
       const expenseEntry = createExpenseFromForm(event)
-
       if (expenseEntry) {
-        setExpenseEntries(previousEntries => [...previousEntries, expenseEntry])
+        setExpenseEntries(previous => [...previous, expenseEntry])
         setActiveForm(null)
         setToastMessage('Your expense was saved successfully.')
       }
@@ -315,9 +193,8 @@ function App() {
 
     if (activeForm === 'Income') {
       const incomeEntry = createIncomeFromForm(event)
-
       if (incomeEntry) {
-        setIncomeEntries(previousEntries => [...previousEntries, incomeEntry])
+        setIncomeEntries(previous => [...previous, incomeEntry])
         setActiveForm(null)
         setToastMessage('Your income was saved successfully.')
       }
@@ -326,14 +203,9 @@ function App() {
 
     if (activeForm === 'Categories') {
       const categoryRequest = createCategoriesFromForm(event)
+      if (!categoryRequest) return
 
-      if (!categoryRequest) {
-        return
-      }
-
-      const requestedAmount = categoryRequest.entry.amount
-      const newAllocationTotal = currentAllocationTotal + requestedAmount
-
+      const newAllocationTotal = currentAllocationTotal + categoryRequest.entry.amount
       if (monthlyIncomeTotal > 0 && newAllocationTotal > monthlyIncomeTotal) {
         setToastMessage('This allocation exceeds your income for the selected month.')
         return
@@ -341,16 +213,13 @@ function App() {
 
       if (categoryRequest.selectedEntryId === 'new') {
         const newCategoryDefinition = { id: categoryRequest.entry.id, name: categoryRequest.entry.name }
-        const existingCategoryDefinition = categoryDefinitions.find((entry) => entry.name === newCategoryDefinition.name)
-
-        if (!existingCategoryDefinition) {
-          setCategoryDefinitions(previousEntries => [...previousEntries, newCategoryDefinition])
+        if (!categoryDefinitions.some((entry) => entry.name === newCategoryDefinition.name)) {
+          setCategoryDefinitions(previous => [...previous, newCategoryDefinition])
         }
-
-        setCategoryEntriesByMonth(previousEntriesByMonth => ({
-          ...previousEntriesByMonth,
+        setCategoryEntriesByMonth(previous => ({
+          ...previous,
           [currentCycleKey]: [
-            ...(previousEntriesByMonth[currentCycleKey] ?? []).filter((entry) => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name),
+            ...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name),
             { ...newCategoryDefinition, amount: categoryRequest.entry.amount },
           ],
         }))
@@ -358,12 +227,11 @@ function App() {
         setToastMessage('Your category was saved successfully.')
       } else {
         const currentCategory = categoryDefinitions.find((entry) => entry.id === categoryRequest.entry.id)
-
-        setCategoryEntriesByMonth(previousEntriesByMonth => ({
-          ...previousEntriesByMonth,
-          [currentCycleKey]: (previousEntriesByMonth[currentCycleKey] ?? []).map(entry => (
+        setCategoryEntriesByMonth(previous => ({
+          ...previous,
+          [currentCycleKey]: (previous[currentCycleKey] ?? []).map((entry) => (
             entry.id === categoryRequest.entry.id || (currentCategory && entry.name === currentCategory.name)
-              ? { ...entry, amount: entry.amount + categoryRequest.entry.amount }
+              ? { ...entry, amount: Number(entry.amount ?? 0) + categoryRequest.entry.amount }
               : entry
           )),
         }))
@@ -375,35 +243,27 @@ function App() {
 
     if (activeForm === 'Net-Worth') {
       const netWorthRequest = createNetWorthFromForm(event)
+      if (!netWorthRequest) return
 
-      if (!netWorthRequest) {
-        return
-      }
-
-      const requestedAmount = netWorthRequest.entry.amount
-      const newAllocationTotal = currentAllocationTotal + requestedAmount
-
+      const newAllocationTotal = currentAllocationTotal + netWorthRequest.entry.amount
       if (monthlyIncomeTotal > 0 && newAllocationTotal > monthlyIncomeTotal) {
         setToastMessage('This savings allocation exceeds your income for the selected month.')
         return
       }
 
       if (netWorthRequest.selectedEntryId === 'new') {
-        setNetWorthEntriesByMonth(previousEntriesByMonth => ({
-          ...previousEntriesByMonth,
-          [currentCycleKey]: [
-            ...(previousEntriesByMonth[currentCycleKey] ?? []),
-            netWorthRequest.entry,
-          ],
+        setNetWorthEntriesByMonth(previous => ({
+          ...previous,
+          [currentCycleKey]: [...(previous[currentCycleKey] ?? []), netWorthRequest.entry],
         }))
         setActiveForm(null)
         setToastMessage('Your net worth was saved successfully.')
       } else {
-        setNetWorthEntriesByMonth(previousEntriesByMonth => ({
-          ...previousEntriesByMonth,
-          [currentCycleKey]: (previousEntriesByMonth[currentCycleKey] ?? []).map(entry => (
+        setNetWorthEntriesByMonth(previous => ({
+          ...previous,
+          [currentCycleKey]: (previous[currentCycleKey] ?? []).map((entry) => (
             entry.id === netWorthRequest.entry.id
-              ? { ...entry, amount: entry.amount + netWorthRequest.entry.amount }
+              ? { ...entry, amount: Number(entry.amount ?? 0) + netWorthRequest.entry.amount }
               : entry
           )),
         }))
@@ -419,9 +279,7 @@ function App() {
   }
 
   function renderCard() {
-    if (!activeForm) {
-      return null
-    }
+    if (!activeForm) return null
 
     return (
       <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="add-form-title">
@@ -434,7 +292,6 @@ function App() {
       </div>
     )
   }
-
 
   return (
     <div className="app-container">
@@ -449,10 +306,8 @@ function App() {
         </Routes>
       </main>
       {renderCard()}
-      {toastMessage && (
-        <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />
-      )}
-      </div>
+      {toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}
+    </div>
   )
 }
 
