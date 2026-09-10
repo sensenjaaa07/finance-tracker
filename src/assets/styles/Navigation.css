@@ -6,13 +6,16 @@ aside.navigation-container {
     width: clamp(220px, 22vw, 280px);
     height: 100vh;
     padding: var(--spacing-xl) var(--spacing-md);
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     z-index: 20;
+    box-sizing: border-box;
     background-color: var(--bg-main);
     border-right: 1px solid var(--border-light);
     box-shadow: var(--shadow-lg);
     gap: var(--spacing-lg);
+    overflow-y: auto;
 }
 
 .logo-container { display:flex; align-items:center; align-self:stretch; gap:var(--spacing-sm); padding:0 var(--spacing-sm); }
@@ -29,6 +32,14 @@ nav ul li a svg { width:1rem; color:var(--text-muted); }
 nav ul li a:hover { background-color:var(--bg-hover); color:var(--color-primary-dark); }
 nav ul li a.active { background-color:#dcfce7; color:var(--color-primary-dark); font-weight:var(--font-weight-semibold); }
 .mobile-nav-toggle,.mobile-nav-backdrop { display:none; }
+
+@media (min-width:761px) {
+    .app-container > .navigation-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+}
 
 @media (max-width:760px) {
     .mobile-nav-toggle {
