@@ -4,6 +4,8 @@
     align-items: stretch;
     min-height: 100vh;
     width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
     background-color: var(--bg-surface);
 }
 
@@ -11,6 +13,7 @@
     flex: 1 1 auto;
     min-width: 0;
     width: 100%;
+    max-width: 100%;
     background-color: var(--bg-main);
 }
 
@@ -34,41 +37,36 @@
 }
 
 @keyframes content-enter {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+@media (max-width: 900px) {
+    .content-container > section { padding-bottom: var(--spacing-lg); }
 }
 
 @media (max-width: 760px) {
-    .app-container {
-        flex-direction: column;
-    }
-
+    .app-container { flex-direction: column; }
     .app-container > .navigation-container {
         flex-basis: auto;
         width: 100%;
+        max-width: 100%;
         height: auto;
         position: relative;
     }
+    .content-container > section { min-height: auto; }
+}
 
-    .content-container > section {
-        min-height: auto;
-        padding-bottom: var(--spacing-lg);
-    }
+@media (max-width: 560px) {
+    .expense-card-overlay { padding: var(--spacing-sm); }
+    .content-container > section { padding-bottom: var(--spacing-md); }
+}
+
+@media (max-width: 380px) {
+    .content-container > section { padding-bottom: var(--spacing-sm); }
 }
 
 @keyframes overlay-enter {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
