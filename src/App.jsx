@@ -16,14 +16,7 @@ import useCloudSync from './services/useCloudSync.js'
 import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
-const EMPTY_DATA = {
-  expenses: [],
-  income: [],
-  categories: [],
-  categoryEntries: {},
-  netWorth: {},
-  budgets: [],
-}
+const EMPTY_DATA = { expenses: [], income: [], categories: [], categoryEntries: {}, netWorth: {}, transfers: [], budgets: [] }
 
 function App() {
   const [activeForm, setActiveForm] = useState(null)
@@ -32,28 +25,14 @@ function App() {
   const [categoryDefinitions, setCategoryDefinitions] = useState(EMPTY_DATA.categories)
   const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(EMPTY_DATA.categoryEntries)
   const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(EMPTY_DATA.netWorth)
+  const [transfers, setTransfers] = useState(EMPTY_DATA.transfers)
   const [budgets, setBudgets] = useState(EMPTY_DATA.budgets)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
 
-  const cloudData = {
-    expenses: expenseEntries,
-    income: incomeEntries,
-    categories: categoryDefinitions,
-    categoryEntries: categoryEntriesByMonth,
-    netWorth: netWorthEntriesByMonth,
-    budgets,
-  }
-
-  const { cloudReady, syncStatus, cloudError } = useCloudSync(cloudData, {
-    setExpenseEntries,
-    setIncomeEntries,
-    setCategoryDefinitions,
-    setCategoryEntriesByMonth,
-    setNetWorthEntriesByMonth,
-    setBudgets,
-  })
+  const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, netWorth: netWorthEntriesByMonth, transfers, budgets }
+  const { cloudReady, syncStatus, cloudError } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setNetWorthEntriesByMonth, setTransfers, setBudgets })
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) return ''
@@ -63,10 +42,7 @@ function App() {
   }
 
   const currentCycleKey = getCycleKey(selectedMonth, budgetCycle)
-  const cycleKeysToDisplay = budgetCycle === 'monthly'
-    ? [getCycleKey(selectedMonth, 'fortnightly-1'), getCycleKey(selectedMonth, 'fortnightly-2'), currentCycleKey]
-    : [currentCycleKey]
-
+  const cycleKeysToDisplay = budgetCycle === 'monthly' ? [getCycleKey(selectedMonth, 'fortnightly-1'), getCycleKey(selectedMonth, 'fortnightly-2'), currentCycleKey] : [currentCycleKey]
   const monthCategoryEntries = cycleKeysToDisplay.flatMap((key) => categoryEntriesByMonth[key] ?? [])
   const categoryEntries = categoryDefinitions.map((definition) => {
     const matchingEntries = monthCategoryEntries.filter((entry) => entry.id === definition.id || entry.name === definition.name)
@@ -77,19 +53,11 @@ function App() {
 
   const getCycleRange = (monthValue, cycleMode) => {
     if (!monthValue) return { monthStart: '', monthEnd: '' }
-
     const year = Number(monthValue.slice(0, 4))
     const monthIndex = Number(monthValue.slice(5, 7))
     const lastDay = new Date(year, monthIndex, 0).getDate()
-
-    if (cycleMode === 'fortnightly-1') {
-      return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-15` }
-    }
-
-    if (cycleMode === 'fortnightly-2') {
-      return { monthStart: `${monthValue}-16`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
-    }
-
+    if (cycleMode === 'fortnightly-1') return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-15` }
+    if (cycleMode === 'fortnightly-2') return { monthStart: `${monthValue}-16`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
     return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
   }
 
@@ -99,77 +67,83 @@ function App() {
   const monthlyIncomeTotal = filteredIncomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) + netWorthEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
 
-  function openAddForm(formType) {
-    setActiveForm(formType)
+  const changeAccountBalance = (accountId, delta) => {
+    let changed = false
+    setNetWorthEntriesByMonth(previous => {
+      const currentEntries = previous[currentCycleKey] ?? []
+      const nextEntries = currentEntries.map(entry => {
+        if (entry.id !== accountId) return entry
+        const nextAmount = Number(entry.amount ?? 0) + delta
+        if (nextAmount < 0) return entry
+        changed = true
+        return { ...entry, amount: nextAmount }
+      })
+      return { ...previous, [currentCycleKey]: nextEntries }
+    })
+    return changed
   }
+
+  function openAddForm(formType) { setActiveForm(formType) }
 
   function updateCategoryAmount(categoryId, amount) {
     const safeAmount = Number(amount)
     if (!Number.isFinite(safeAmount) || safeAmount < 0) return false
-
     const categoryDefinition = categoryDefinitions.find((entry) => entry.id === categoryId)
     if (!categoryDefinition) return false
-
-    setCategoryEntriesByMonth(previous => ({
-      ...previous,
-      [currentCycleKey]: [
-        ...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name),
-        { ...categoryDefinition, amount: safeAmount },
-      ],
-    }))
+    setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name), { ...categoryDefinition, amount: safeAmount }] }))
     return true
   }
 
   function deleteCategoryEntry(categoryId) {
     const categoryDefinition = categoryDefinitions.find((entry) => entry.id === categoryId)
     setCategoryDefinitions(previous => previous.filter((entry) => entry.id !== categoryId))
-    setCategoryEntriesByMonth(previous => {
-      const next = { ...previous }
-      Object.keys(next).forEach((key) => {
-        next[key] = (next[key] ?? []).filter((entry) => entry.id !== categoryId && (!categoryDefinition || entry.name !== categoryDefinition.name))
-      })
-      return next
-    })
+    setCategoryEntriesByMonth(previous => { const next = { ...previous }; Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== categoryId && (!categoryDefinition || entry.name !== categoryDefinition.name)) }); return next })
     return true
   }
 
   function updateExpenseEntry(expenseId, updatedEntry) {
-    setExpenseEntries(previous => previous.map((entry) => entry.id === expenseId ? { ...entry, ...updatedEntry } : entry))
+    setExpenseEntries(previous => previous.map(entry => entry.id === expenseId ? { ...entry, ...updatedEntry } : entry))
   }
 
   function deleteExpenseEntry(expenseId) {
-    setExpenseEntries(previous => previous.filter((entry) => entry.id !== expenseId))
+    setExpenseEntries(previous => previous.filter(entry => entry.id !== expenseId))
     return true
   }
 
-  function updateIncomeEntry(incomeId, updatedEntry) {
-    setIncomeEntries(previous => previous.map((entry) => entry.id === incomeId ? { ...entry, ...updatedEntry } : entry))
-  }
-
-  function deleteIncomeEntry(incomeId) {
-    setIncomeEntries(previous => previous.filter((entry) => entry.id !== incomeId))
-    return true
-  }
+  function updateIncomeEntry(incomeId, updatedEntry) { setIncomeEntries(previous => previous.map(entry => entry.id === incomeId ? { ...entry, ...updatedEntry } : entry)) }
+  function deleteIncomeEntry(incomeId) { setIncomeEntries(previous => previous.filter(entry => entry.id !== incomeId)); return true }
 
   function updateNetWorthEntry(netWorthId, updatedEntry) {
     const nextAmount = Number(updatedEntry.amount)
     const nextName = updatedEntry.name?.trim() ?? ''
     if (!Number.isFinite(nextAmount) || nextAmount < 0 || !nextName) return false
-
-    setNetWorthEntriesByMonth(previous => ({
-      ...previous,
-      [currentCycleKey]: (previous[currentCycleKey] ?? []).map((entry) => (
-        entry.id === netWorthId ? { ...entry, name: nextName, amount: nextAmount } : entry
-      )),
-    }))
+    setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).map(entry => entry.id === netWorthId ? { ...entry, name: nextName, amount: nextAmount } : entry) }))
     return true
   }
 
   function deleteNetWorthEntry(netWorthId) {
-    setNetWorthEntriesByMonth(previous => ({
-      ...previous,
-      [currentCycleKey]: (previous[currentCycleKey] ?? []).filter((entry) => entry.id !== netWorthId),
-    }))
+    setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).filter(entry => entry.id !== netWorthId) }))
+    return true
+  }
+
+  function handleTransfer(fromId, toId, amount) {
+    const source = netWorthEntries.find(entry => entry.id === fromId)
+    const destination = netWorthEntries.find(entry => entry.id === toId)
+    if (!source || !destination || fromId === toId || amount <= 0) return false
+    if (Number(source.amount ?? 0) < amount) { setToastMessage(`Insufficient balance in ${source.name}.`); return false }
+
+    setNetWorthEntriesByMonth(previous => {
+      const currentEntries = previous[currentCycleKey] ?? []
+      const nextEntries = currentEntries.map(entry => {
+        if (entry.id === fromId) return { ...entry, amount: Number(entry.amount ?? 0) - amount }
+        if (entry.id === toId) return { ...entry, amount: Number(entry.amount ?? 0) + amount }
+        return entry
+      })
+      return { ...previous, [currentCycleKey]: nextEntries }
+    })
+    const transfer = { id: crypto.randomUUID(), type: 'transfer', date: new Date(), fromAccountId: fromId, fromAccount: source.name, toAccountId: toId, toAccount: destination.name, amount }
+    setTransfers(previous => [...previous, transfer])
+    setToastMessage(`₱${amount.toFixed(2)} transferred from ${source.name} to ${destination.name}.`)
     return true
   }
 
@@ -178,143 +152,71 @@ function App() {
 
     if (activeForm === 'Expenses') {
       const expenseEntry = createExpenseFromForm(event)
-      if (expenseEntry) {
-        setExpenseEntries(previous => [...previous, expenseEntry])
-        setActiveForm(null)
-        setToastMessage('Your expense was saved successfully.')
-      }
+      if (!expenseEntry) return
+      const account = netWorthEntries.find(entry => entry.id === expenseEntry.accountId)
+      if (!account) { setToastMessage('Please select an account.'); return }
+      if (Number(account.amount ?? 0) < expenseEntry.amount) { setToastMessage(`Insufficient balance in ${account.name}.`); return }
+      changeAccountBalance(expenseEntry.accountId, -expenseEntry.amount)
+      setExpenseEntries(previous => [...previous, expenseEntry])
+      setActiveForm(null)
+      setToastMessage(`₱${expenseEntry.amount.toFixed(2)} deducted from ${account.name}.`)
       return
     }
 
     if (activeForm === 'Income') {
       const incomeEntry = createIncomeFromForm(event)
-      if (incomeEntry) {
-        setIncomeEntries(previous => [...previous, incomeEntry])
-        setActiveForm(null)
-        setToastMessage('Your income was saved successfully.')
-      }
+      if (incomeEntry) { setIncomeEntries(previous => [...previous, incomeEntry]); setActiveForm(null); setToastMessage('Your income was saved successfully.') }
       return
     }
 
     if (activeForm === 'Categories') {
       const categoryRequest = createCategoriesFromForm(event)
       if (!categoryRequest) return
-
       const newAllocationTotal = currentAllocationTotal + categoryRequest.entry.amount
-      if (monthlyIncomeTotal > 0 && newAllocationTotal > monthlyIncomeTotal) {
-        setToastMessage('This allocation exceeds your income for the selected month.')
-        return
-      }
-
+      if (monthlyIncomeTotal > 0 && newAllocationTotal > monthlyIncomeTotal) { setToastMessage('This allocation exceeds your income for the selected month.'); return }
       if (categoryRequest.selectedEntryId === 'new') {
         const newCategoryDefinition = { id: categoryRequest.entry.id, name: categoryRequest.entry.name }
-        if (!categoryDefinitions.some((entry) => entry.name === newCategoryDefinition.name)) {
-          setCategoryDefinitions(previous => [...previous, newCategoryDefinition])
-        }
-        setCategoryEntriesByMonth(previous => ({
-          ...previous,
-          [currentCycleKey]: [
-            ...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name),
-            { ...newCategoryDefinition, amount: categoryRequest.entry.amount },
-          ],
-        }))
-        setActiveForm(null)
-        setToastMessage('Your category was saved successfully.')
+        if (!categoryDefinitions.some(entry => entry.name === newCategoryDefinition.name)) setCategoryDefinitions(previous => [...previous, newCategoryDefinition])
+        setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter(entry => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name), { ...newCategoryDefinition, amount: categoryRequest.entry.amount }] }))
+        setActiveForm(null); setToastMessage('Your category was saved successfully.')
       } else {
-        const currentCategory = categoryDefinitions.find((entry) => entry.id === categoryRequest.entry.id)
-        setCategoryEntriesByMonth(previous => ({
-          ...previous,
-          [currentCycleKey]: (previous[currentCycleKey] ?? []).map((entry) => (
-            entry.id === categoryRequest.entry.id || (currentCategory && entry.name === currentCategory.name)
-              ? { ...entry, amount: Number(entry.amount ?? 0) + categoryRequest.entry.amount }
-              : entry
-          )),
-        }))
-        setActiveForm(null)
-        setToastMessage('Money was added to your category successfully.')
+        const currentCategory = categoryDefinitions.find(entry => entry.id === categoryRequest.entry.id)
+        setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).map(entry => entry.id === categoryRequest.entry.id || (currentCategory && entry.name === currentCategory.name) ? { ...entry, amount: Number(entry.amount ?? 0) + categoryRequest.entry.amount } : entry) }))
+        setActiveForm(null); setToastMessage('Money was added to your category successfully.')
       }
       return
     }
 
     if (activeForm === 'Net-Worth') {
-      const netWorthRequest = createNetWorthFromForm(event)
-      if (!netWorthRequest) return
-
-      const newAllocationTotal = currentAllocationTotal + netWorthRequest.entry.amount
-      if (monthlyIncomeTotal > 0 && newAllocationTotal > monthlyIncomeTotal) {
-        setToastMessage('This savings allocation exceeds your income for the selected month.')
-        return
-      }
-
-      if (netWorthRequest.selectedEntryId === 'new') {
-        setNetWorthEntriesByMonth(previous => ({
-          ...previous,
-          [currentCycleKey]: [...(previous[currentCycleKey] ?? []), netWorthRequest.entry],
-        }))
-        setActiveForm(null)
-        setToastMessage('Your net worth was saved successfully.')
+      const accountRequest = createNetWorthFromForm(event)
+      if (!accountRequest) return
+      if (accountRequest.selectedEntryId === 'new') {
+        setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []), accountRequest.entry] }))
+        setActiveForm(null); setToastMessage('Your account was added successfully.')
       } else {
-        setNetWorthEntriesByMonth(previous => ({
-          ...previous,
-          [currentCycleKey]: (previous[currentCycleKey] ?? []).map((entry) => (
-            entry.id === netWorthRequest.entry.id
-              ? { ...entry, amount: Number(entry.amount ?? 0) + netWorthRequest.entry.amount }
-              : entry
-          )),
-        }))
-        setActiveForm(null)
-        setToastMessage('Money was added to your net worth successfully.')
+        setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).map(entry => entry.id === accountRequest.entry.id ? { ...entry, amount: Number(entry.amount ?? 0) + accountRequest.entry.amount } : entry) }))
+        setActiveForm(null); setToastMessage('Money was added to your account successfully.')
       }
       return
     }
 
-    event.target.reset()
-    setActiveForm(null)
-    setToastMessage(`${activeForm} was saved successfully.`)
+    event.target.reset(); setActiveForm(null); setToastMessage(`${activeForm} was saved successfully.`)
   }
 
   function renderCard() {
     if (!activeForm) return null
-
-    return (
-      <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="add-form-title">
-        <AddForm
-          formType={activeForm}
-          entries={activeForm === 'Categories' ? categoryEntries : activeForm === 'Net-Worth' ? netWorthEntries : categoryEntries}
-          onSubmit={handleAddFormSubmit}
-          onClose={() => setActiveForm(null)}
-        />
-      </div>
-    )
+    return <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="add-form-title"><AddForm formType={activeForm} entries={activeForm === 'Categories' ? categoryEntries : activeForm === 'Net-Worth' ? netWorthEntries : categoryEntries} accounts={netWorthEntries} onSubmit={handleAddFormSubmit} onClose={() => setActiveForm(null)} /></div>
   }
 
-  if (!cloudReady) {
-    return (
-      <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}>
-        <div>
-          <h2>{syncStatus === 'offline' ? 'Unable to connect to Redis' : 'Loading your finance data…'}</h2>
-          <p>{cloudError || 'Reading the latest data from the cloud.'}</p>
-        </div>
-      </div>
-    )
-  }
+  if (!cloudReady) return <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}><div><h2>{syncStatus === 'offline' ? 'Unable to connect to Redis' : 'Loading your finance data…'}</h2><p>{cloudError || 'Reading the latest data from the cloud.'}</p></div></div>
 
-  return (
-    <div className="app-container">
-      <Navigation />
-      <main className="content-container">
-        <Routes>
-          <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
-          <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} />} />
-          <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} />} />
-          <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
-          <Route path="/net-worth" element={<NetWorth netWorthEntries={netWorthEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateNetWorthEntry={updateNetWorthEntry} onDeleteNetWorthEntry={deleteNetWorthEntry} />} />
-        </Routes>
-      </main>
-      {renderCard()}
-      {toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}
-    </div>
-  )
+  return <div className="app-container"><Navigation /><main className="content-container"><Routes>
+    <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
+    <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} />} />
+    <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} accounts={netWorthEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} />} />
+    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
+    <Route path="/net-worth" element={<NetWorth netWorthEntries={netWorthEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateNetWorthEntry={updateNetWorthEntry} onDeleteNetWorthEntry={deleteNetWorthEntry} onTransfer={handleTransfer} />} />
+  </Routes></main>{renderCard()}{toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}</div>
 }
 
 export default App
