@@ -11,17 +11,42 @@ const EMPTY_DATA = {
 
 const POLL_INTERVAL_MS = 3000
 
+// Redis stores JSON, so JavaScript Date objects come back as strings.
+// Convert date fields back to Date objects before the React UI receives them.
+const restoreDates = (value, key = '') => {
+  if (Array.isArray(value)) {
+    return value.map((item) => restoreDates(item, key))
+  }
+
+  if (!value || typeof value !== 'object') {
+    if (typeof value === 'string' && /date$/i.test(key)) {
+      const date = new Date(value)
+      return Number.isNaN(date.getTime()) ? value : date
+    }
+    return value
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([entryKey, entryValue]) => [
+      entryKey,
+      restoreDates(entryValue, entryKey),
+    ]),
+  )
+}
+
 const applyData = (data, setters) => {
-  setters.setExpenseEntries(Array.isArray(data?.expenses) ? data.expenses : [])
-  setters.setIncomeEntries(Array.isArray(data?.income) ? data.income : [])
-  setters.setCategoryDefinitions(Array.isArray(data?.categories) ? data.categories : [])
+  const restored = restoreDates(data ?? EMPTY_DATA)
+
+  setters.setExpenseEntries(Array.isArray(restored?.expenses) ? restored.expenses : [])
+  setters.setIncomeEntries(Array.isArray(restored?.income) ? restored.income : [])
+  setters.setCategoryDefinitions(Array.isArray(restored?.categories) ? restored.categories : [])
   setters.setCategoryEntriesByMonth(
-    data?.categoryEntries && typeof data.categoryEntries === 'object' ? data.categoryEntries : {},
+    restored?.categoryEntries && typeof restored.categoryEntries === 'object' ? restored.categoryEntries : {},
   )
   setters.setNetWorthEntriesByMonth(
-    data?.netWorth && typeof data.netWorth === 'object' ? data.netWorth : {},
+    restored?.netWorth && typeof restored.netWorth === 'object' ? restored.netWorth : {},
   )
-  setters.setBudgets(Array.isArray(data?.budgets) ? data.budgets : [])
+  setters.setBudgets(Array.isArray(restored?.budgets) ? restored.budgets : [])
 }
 
 const readCloudData = async () => {
