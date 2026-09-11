@@ -35,17 +35,25 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
         {expenseEntries.length === 0 && transfers.length === 0 ? <p className="empty-state">No transactions have been recorded yet.</p> : <table className="transactions-table">
           <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account</th><th className="transactions-amount">Amount</th><th className="transactions-actions">Actions</th></tr></thead>
           <tbody>
-            {expenseEntries.map(expenseEntry => (
-              <tr key={`expense-${expenseEntry.id}`}>
-                <td>{expenseEntry.date.toLocaleDateString()}</td><td>Expense</td><td className="transaction-title-cell">{expenseEntry.title}<br /><small>{expenseEntry.category}</small></td>
-                <td>{accounts.find(account => account.id === expenseEntry.accountId)?.name || expenseEntry.account || 'Account not recorded'}</td>
-                <td className="transactions-amount">-₱{Number(expenseEntry.amount).toFixed(2)}</td>
+            {expenseEntries.map(expenseEntry => {
+              const accountName = accounts.find(account => account.id === expenseEntry.accountId)?.name || expenseEntry.account || 'Account not recorded'
+              return <tr key={`expense-${expenseEntry.id}`}>
+                <td className="transaction-date">{expenseEntry.date.toLocaleDateString()}</td>
+                <td><span className="transaction-type transaction-type-expense">Expense</span></td>
+                <td className="transaction-title-cell">{expenseEntry.title}<small>{expenseEntry.category}</small></td>
+                <td className="transaction-account-cell">{accountName}</td>
+                <td className="transactions-amount transaction-expense-amount">-₱{Number(expenseEntry.amount).toFixed(2)}</td>
                 <td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(expenseEntry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(expenseEntry)}>Delete</button></div></td>
               </tr>
-            ))}
+            })}
             {transfers.map(transfer => (
               <tr key={`transfer-${transfer.id}`}>
-                <td>{new Date(transfer.date).toLocaleDateString()}</td><td>Transfer</td><td className="transaction-title-cell">{transfer.fromAccount} → {transfer.toAccount}</td><td>{transfer.fromAccount} → {transfer.toAccount}</td><td className="transactions-amount">₱{Number(transfer.amount).toFixed(2)}</td><td className="transactions-actions"><span>Logged</span></td>
+                <td className="transaction-date">{new Date(transfer.date).toLocaleDateString()}</td>
+                <td><span className="transaction-type transaction-type-transfer">Transfer</span></td>
+                <td className="transaction-title-cell">{transfer.fromAccount} → {transfer.toAccount}<small>Account transfer</small></td>
+                <td className="transaction-account-cell">{transfer.fromAccount} → {transfer.toAccount}</td>
+                <td className="transactions-amount transaction-transfer-amount">₱{Number(transfer.amount).toFixed(2)}</td>
+                <td className="transactions-actions"><span className="transaction-logged">Logged</span></td>
               </tr>
             ))}
           </tbody>
