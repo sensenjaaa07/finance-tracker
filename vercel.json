@@ -4,5 +4,11 @@
     "api/data.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/budget", "destination": "/index.html" },
+    { "source": "/transactions", "destination": "/index.html" },
+    { "source": "/income", "destination": "/index.html" },
+    { "source": "/net-worth", "destination": "/index.html" }
+  ]
 }
