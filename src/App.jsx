@@ -13,53 +13,29 @@ import createCategoriesFromForm from './services/createCategoriesFromForm.js'
 import createNetWorthFromForm from './services/createNetWorthFromForm.js'
 import filterExpensesByDate from './services/filterExpensesByDate.js'
 import useCloudSync from './services/useCloudSync.js'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
-const STORAGE_KEYS = {
-  expenses: 'finance-tracker-expenses',
-  income: 'finance-tracker-income',
-  categories: 'finance-tracker-category-definitions',
-  categoryEntries: 'finance-tracker-category-entries',
-  netWorth: 'finance-tracker-net-worth',
-  budgets: 'finance-tracker-budgets',
-}
-
-const readStorage = (key, fallback) => {
-  if (typeof window === 'undefined') return fallback
-
-  try {
-    const stored = window.localStorage.getItem(key)
-    return stored ? JSON.parse(stored) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-const writeStorage = (key, value) => {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(key, JSON.stringify(value))
-  }
+const EMPTY_DATA = {
+  expenses: [],
+  income: [],
+  categories: [],
+  categoryEntries: {},
+  netWorth: {},
+  budgets: [],
 }
 
 function App() {
   const [activeForm, setActiveForm] = useState(null)
-  const [expenseEntries, setExpenseEntries] = useState(() => readStorage(STORAGE_KEYS.expenses, []))
-  const [incomeEntries, setIncomeEntries] = useState(() => readStorage(STORAGE_KEYS.income, []))
-  const [categoryDefinitions, setCategoryDefinitions] = useState(() => readStorage(STORAGE_KEYS.categories, []))
-  const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(() => readStorage(STORAGE_KEYS.categoryEntries, {}))
-  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(() => readStorage(STORAGE_KEYS.netWorth, {}))
-  const [budgets, setBudgets] = useState(() => readStorage(STORAGE_KEYS.budgets, []))
+  const [expenseEntries, setExpenseEntries] = useState(EMPTY_DATA.expenses)
+  const [incomeEntries, setIncomeEntries] = useState(EMPTY_DATA.income)
+  const [categoryDefinitions, setCategoryDefinitions] = useState(EMPTY_DATA.categories)
+  const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(EMPTY_DATA.categoryEntries)
+  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(EMPTY_DATA.netWorth)
+  const [budgets, setBudgets] = useState(EMPTY_DATA.budgets)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
-
-  useEffect(() => writeStorage(STORAGE_KEYS.expenses, expenseEntries), [expenseEntries])
-  useEffect(() => writeStorage(STORAGE_KEYS.income, incomeEntries), [incomeEntries])
-  useEffect(() => writeStorage(STORAGE_KEYS.categories, categoryDefinitions), [categoryDefinitions])
-  useEffect(() => writeStorage(STORAGE_KEYS.categoryEntries, categoryEntriesByMonth), [categoryEntriesByMonth])
-  useEffect(() => writeStorage(STORAGE_KEYS.netWorth, netWorthEntriesByMonth), [netWorthEntriesByMonth])
-  useEffect(() => writeStorage(STORAGE_KEYS.budgets, budgets), [budgets])
 
   const cloudData = {
     expenses: expenseEntries,
@@ -70,7 +46,7 @@ function App() {
     budgets,
   }
 
-  useCloudSync(cloudData, {
+  const { cloudReady, syncStatus, cloudError } = useCloudSync(cloudData, {
     setExpenseEntries,
     setIncomeEntries,
     setCategoryDefinitions,
@@ -308,6 +284,17 @@ function App() {
           onSubmit={handleAddFormSubmit}
           onClose={() => setActiveForm(null)}
         />
+      </div>
+    )
+  }
+
+  if (!cloudReady) {
+    return (
+      <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}>
+        <div>
+          <h2>{syncStatus === 'offline' ? 'Unable to connect to Redis' : 'Loading your finance data…'}</h2>
+          <p>{cloudError || 'Reading the latest data from the cloud.'}</p>
+        </div>
       </div>
     )
   }
