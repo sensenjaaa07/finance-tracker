@@ -24,19 +24,16 @@ const formDefinitions = {
     ],
   },
   'Net-Worth': {
-    title: 'Savings',
+    title: 'Account',
     nameField: { name: 'netWorthName', type: 'text', placeholder: 'Account Name' },
-    amountField: { name: 'amount', type: 'number', placeholder: 'Amount' },
+    amountField: { name: 'amount', type: 'number', placeholder: 'Initial Balance' },
   },
 }
 
-const AddForm = ({ formType, entries = [], onSubmit, onClose }) => {
+const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) => {
   const [entryAction, setEntryAction] = useState('new')
   const formDefinition = formDefinitions[formType]
-
-  if (!formDefinition) {
-    return null
-  }
+  if (!formDefinition) return null
 
   return (
     <div className="add-form">
@@ -50,9 +47,12 @@ const AddForm = ({ formType, entries = [], onSubmit, onClose }) => {
             <label className="add-form-label" htmlFor="expense-category">Category</label>
             <select id="expense-category" name="category" defaultValue="Uncategorized" required>
               <option value="Uncategorized">Uncategorized</option>
-              {entries.map((entry) => (
-                <option key={entry.id} value={entry.name}>{entry.name}</option>
-              ))}
+              {entries.map((entry) => <option key={entry.id} value={entry.name}>{entry.name}</option>)}
+            </select>
+            <label className="add-form-label" htmlFor="expense-account">Deduct from account</label>
+            <select id="expense-account" name="accountId" defaultValue="" required>
+              <option value="" disabled>Select an account</option>
+              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}
             </select>
           </>
         )}
@@ -61,21 +61,13 @@ const AddForm = ({ formType, entries = [], onSubmit, onClose }) => {
             <label className="add-form-label" htmlFor="entry-action">Add money to</label>
             <select id="entry-action" name="entryAction" value={entryAction} onChange={(event) => setEntryAction(event.target.value)}>
               <option value="new">Create new {formDefinition.title}</option>
-              {entries.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.name}</option>
-              ))}
+              {entries.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
             </select>
           </>
         )}
-        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => (
-          <input key={field.name} {...field} required />
-        ))}
-        {formType !== 'Expenses' && formType !== 'Income' && entryAction === 'new' && (
-          <input {...formDefinition.nameField} required />
-        )}
-        {formType !== 'Expenses' && formType !== 'Income' && (
-          <input {...formDefinition.amountField} min="0.01" step="0.01" />
-        )}
+        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => <input key={field.name} {...field} required />)}
+        {formType !== 'Expenses' && formType !== 'Income' && entryAction === 'new' && <input {...formDefinition.nameField} required />}
+        {formType !== 'Expenses' && formType !== 'Income' && <input {...formDefinition.amountField} min="0.01" step="0.01" required />}
         <button type="submit">Add</button>
       </form>
     </div>
