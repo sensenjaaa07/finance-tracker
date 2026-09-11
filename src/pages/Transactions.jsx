@@ -72,7 +72,8 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
         .transactions-filter-bar { margin: 0 var(--spacing-lg) var(--spacing-md); padding: 1.25rem; border: 1px solid var(--border-light); border-radius: var(--radius-lg); background: var(--bg-card); box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
         .transactions-filter-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.1rem; }
         .transactions-filter-heading { display:flex; align-items:center; gap:.75rem; }
-        .transactions-filter-icon { display:grid; place-items:center; width:2.4rem; height:2.4rem; border-radius:.7rem; background:rgba(16,185,129,.1); color:var(--color-primary-dark); font-size:1rem; }
+        .transactions-filter-icon { display:grid; place-items:center; width:2.4rem; height:2.4rem; flex:0 0 2.4rem; box-sizing:border-box; border-radius:.7rem; background:rgba(16,185,129,.1); color:var(--color-primary-dark); font-size:1rem; line-height:0; }
+        .transactions-filter-icon svg { display:block; width:1.15rem; height:1.15rem; }
         .transactions-filter-heading strong { display:block; color:var(--text-primary); font-size:.9rem; }
         .transactions-filter-heading span { display:block; margin-top:.15rem; color:var(--text-muted); font-size:.75rem; }
         .transaction-filter-clear { padding:.5rem .8rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); font:inherit; font-size:.78rem; font-weight:var(--font-weight-semibold); cursor:pointer; transition:all var(--transition-fast) ease; }
@@ -89,7 +90,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
       <Header pageTitle="Transactions" onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} />
       <div className="transactions-filter-bar">
         <div className="transactions-filter-header">
-          <div className="transactions-filter-heading"><span className="transactions-filter-icon">⌕</span><div><strong>Filter transactions</strong><span>{transactionCount} {transactionCount === 1 ? 'transaction' : 'transactions'} shown</span></div></div>
+          <div className="transactions-filter-heading"><span className="transactions-filter-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16l-6.5 7.2V18l-3 1v-6.8L4 5z" /></svg></span><div><strong>Filter transactions</strong><span>{transactionCount} {transactionCount === 1 ? 'transaction' : 'transactions'} shown</span></div></div>
           {hasFilters && <button type="button" className="transaction-filter-clear" onClick={clearFilters}>Clear all</button>}
         </div>
         <div className="transactions-filter-controls">
