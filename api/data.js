@@ -1,5 +1,4 @@
 const DATA_KEY = 'finance-tracker:data'
-const CHANNEL = 'finance-tracker:sync'
 
 const getConfig = () => ({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -26,7 +25,11 @@ async function redisRequest(path, options = {}) {
 }
 
 const sendJson = (res, status, body) => {
-  res.status(status).setHeader('Content-Type', 'application/json').send(JSON.stringify(body))
+  res
+    .status(status)
+    .setHeader('Content-Type', 'application/json')
+    .setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+    .send(JSON.stringify(body))
 }
 
 export default async function handler(req, res) {
@@ -49,17 +52,10 @@ export default async function handler(req, res) {
         data: body.data,
       }
 
-      const serialized = JSON.stringify(payload)
       await redisRequest(`/set/${encodeURIComponent(DATA_KEY)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: serialized,
-      })
-
-      await redisRequest(`/publish/${encodeURIComponent(CHANNEL)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: serialized,
+        body: JSON.stringify(payload),
       })
 
       return sendJson(res, 200, payload)
