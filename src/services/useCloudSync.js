@@ -9,6 +9,8 @@ const EMPTY_DATA = {
   budgets: [],
 }
 
+const POLL_INTERVAL_MS = 2000
+
 const hasLocalData = (data) => (
   data.expenses.length > 0 ||
   data.income.length > 0 ||
@@ -46,13 +48,41 @@ export default function useCloudSync(data, setters) {
     latestUpdatedAt.current = Number(result.updatedAt ?? Date.now())
   }
 
+  const checkForCloudUpdates = async () => {
+    try {
+      const response = await fetch('/api/data', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      })
+
+      if (!response.ok) throw new Error('Unable to check cloud data.')
+
+      const result = await response.json()
+      const stored = result.data
+      const updatedAt = Number(stored?.updatedAt ?? 0)
+
+      if (!stored?.data || updatedAt <= latestUpdatedAt.current) return
+
+      latestUpdatedAt.current = updatedAt
+      skipNextSync.current = true
+      applyData(stored.data, setters)
+      setSyncStatus('connected')
+    } catch (error) {
+      console.error('Cloud polling failed:', error)
+      setSyncStatus('offline')
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
     const loadCloudData = async () => {
       try {
         setSyncStatus('connecting')
-        const response = await fetch('/api/data', { cache: 'no-store' })
+        const response = await fetch('/api/data', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        })
         if (!response.ok) throw new Error('Unable to load cloud data.')
 
         const result = await response.json()
@@ -117,29 +147,9 @@ export default function useCloudSync(data, setters) {
   useEffect(() => {
     if (!cloudReady) return undefined
 
-    const source = new EventSource('/api/realtime')
+    const intervalId = setInterval(checkForCloudUpdates, POLL_INTERVAL_MS)
 
-    source.onopen = () => setSyncStatus('connected')
-
-    source.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data)
-        const updatedAt = Number(payload.updatedAt ?? 0)
-
-        if (!payload.data || updatedAt <= latestUpdatedAt.current) return
-
-        latestUpdatedAt.current = updatedAt
-        skipNextSync.current = true
-        applyData(payload.data, setters)
-        setSyncStatus('connected')
-      } catch (error) {
-        console.error('Invalid realtime update:', error)
-      }
-    }
-
-    source.onerror = () => setSyncStatus('reconnecting')
-
-    return () => source.close()
+    return () => clearInterval(intervalId)
   }, [cloudReady])
 
   return { cloudReady, syncStatus }
