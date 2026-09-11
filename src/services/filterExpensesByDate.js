@@ -16,6 +16,10 @@ function filterExpensesByDate(expenses, startDate, endDate) {
   const normalizedEnd = toDateOnly(endDate)
 
   return expenses.filter((expense) => {
+    // Account transfers are transaction-log entries, not period expenses.
+    // Keep them visible in Transactions even when the budgeting cycle changes.
+    if (expense?.type === 'transfer') return true
+
     const expenseDate = toDateOnly(expense.date)
     if (!expenseDate) return false
 
