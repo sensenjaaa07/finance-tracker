@@ -6,18 +6,14 @@ const EMPTY_DATA = {
   categories: [],
   categoryEntries: {},
   netWorth: {},
+  transfers: [],
   budgets: [],
 }
 
 const POLL_INTERVAL_MS = 3000
 
-// Redis stores JSON, so JavaScript Date objects come back as strings.
-// Convert date fields back to Date objects before the React UI receives them.
 const restoreDates = (value, key = '') => {
-  if (Array.isArray(value)) {
-    return value.map((item) => restoreDates(item, key))
-  }
-
+  if (Array.isArray(value)) return value.map((item) => restoreDates(item, key))
   if (!value || typeof value !== 'object') {
     if (typeof value === 'string' && /date$/i.test(key)) {
       const date = new Date(value)
@@ -25,55 +21,29 @@ const restoreDates = (value, key = '') => {
     }
     return value
   }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([entryKey, entryValue]) => [
-      entryKey,
-      restoreDates(entryValue, entryKey),
-    ]),
-  )
+  return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, restoreDates(entryValue, entryKey)]))
 }
 
 const applyData = (data, setters) => {
   const restored = restoreDates(data ?? EMPTY_DATA)
-
   setters.setExpenseEntries(Array.isArray(restored?.expenses) ? restored.expenses : [])
   setters.setIncomeEntries(Array.isArray(restored?.income) ? restored.income : [])
   setters.setCategoryDefinitions(Array.isArray(restored?.categories) ? restored.categories : [])
-  setters.setCategoryEntriesByMonth(
-    restored?.categoryEntries && typeof restored.categoryEntries === 'object' ? restored.categoryEntries : {},
-  )
-  setters.setNetWorthEntriesByMonth(
-    restored?.netWorth && typeof restored.netWorth === 'object' ? restored.netWorth : {},
-  )
+  setters.setCategoryEntriesByMonth(restored?.categoryEntries && typeof restored.categoryEntries === 'object' ? restored.categoryEntries : {})
+  setters.setNetWorthEntriesByMonth(restored?.netWorth && typeof restored.netWorth === 'object' ? restored.netWorth : {})
+  setters.setTransfers(Array.isArray(restored?.transfers) ? restored.transfers : [])
   setters.setBudgets(Array.isArray(restored?.budgets) ? restored.budgets : [])
 }
 
 const readCloudData = async () => {
-  const response = await fetch('/api/data', {
-    method: 'GET',
-    cache: 'no-store',
-    headers: { 'Cache-Control': 'no-cache' },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Unable to load Redis data (${response.status}).`)
-  }
-
+  const response = await fetch('/api/data', { method: 'GET', cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
+  if (!response.ok) throw new Error(`Unable to load Redis data (${response.status}).`)
   return response.json()
 }
 
 const saveCloudData = async (data) => {
-  const response = await fetch('/api/data', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Unable to save Redis data (${response.status}).`)
-  }
-
+  const response = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) })
+  if (!response.ok) throw new Error(`Unable to save Redis data (${response.status}).`)
   return response.json()
 }
 
@@ -87,14 +57,11 @@ export default function useCloudSync(data, setters) {
 
   useEffect(() => {
     let cancelled = false
-
     const loadFromRedis = async () => {
       try {
         const result = await readCloudData()
         const stored = result?.data
-
         if (cancelled) return
-
         latestUpdatedAt.current = Number(stored?.updatedAt ?? 0)
         skipNextSave.current = true
         applyData(stored?.data ?? EMPTY_DATA, setters)
@@ -110,24 +77,14 @@ export default function useCloudSync(data, setters) {
         }
       }
     }
-
     loadFromRedis()
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
     if (!cloudReady) return undefined
-
-    if (skipNextSave.current) {
-      skipNextSave.current = false
-      return undefined
-    }
-
+    if (skipNextSave.current) { skipNextSave.current = false; return undefined }
     if (saveTimer.current) clearTimeout(saveTimer.current)
-
     saveTimer.current = setTimeout(async () => {
       try {
         setSyncStatus('saving')
@@ -141,23 +98,17 @@ export default function useCloudSync(data, setters) {
         setSyncStatus('offline')
       }
     }, 150)
-
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-    }
-  }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.netWorth, data.budgets])
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.netWorth, data.transfers, data.budgets])
 
   useEffect(() => {
     if (!cloudReady) return undefined
-
     const checkRedis = async () => {
       try {
         const result = await readCloudData()
         const stored = result?.data
         const updatedAt = Number(stored?.updatedAt ?? 0)
-
         if (!stored?.data || updatedAt <= latestUpdatedAt.current) return
-
         latestUpdatedAt.current = updatedAt
         skipNextSave.current = true
         applyData(stored.data, setters)
@@ -168,7 +119,6 @@ export default function useCloudSync(data, setters) {
         setSyncStatus('offline')
       }
     }
-
     const intervalId = setInterval(checkRedis, POLL_INTERVAL_MS)
     return () => clearInterval(intervalId)
   }, [cloudReady])
