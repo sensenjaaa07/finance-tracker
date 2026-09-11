@@ -47,8 +47,41 @@ export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new
     }
   }
 
-  const periodDays = periodType === '7_days' ? 7 : 15
-  return { startDate: formatDateInput(today), endDate: formatDateInput(addDays(today, periodDays - 1)), totalDays: periodDays }
+  if (periodType === '7_days') {
+    // A 7-day budget always represents the calendar week: Monday through Sunday.
+    const dayOfWeek = today.getDay() // Sunday = 0, Monday = 1, ... Saturday = 6
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    const weekStart = addDays(today, -daysFromMonday)
+    const weekEnd = addDays(weekStart, 6)
+    return {
+      startDate: formatDateInput(weekStart),
+      endDate: formatDateInput(weekEnd),
+      totalDays: 7,
+    }
+  }
+
+  // A 15-day budget always represents the calendar half-month: 1–15 or 16–end.
+  if (periodType === '15_days') {
+    if (today.getDate() <= 15) {
+      const periodStart = new Date(today.getFullYear(), today.getMonth(), 1)
+      const periodEnd = new Date(today.getFullYear(), today.getMonth(), 15)
+      return {
+        startDate: formatDateInput(periodStart),
+        endDate: formatDateInput(periodEnd),
+        totalDays: 15,
+      }
+    }
+
+    const periodStart = new Date(today.getFullYear(), today.getMonth(), 16)
+    const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    return {
+      startDate: formatDateInput(periodStart),
+      endDate: formatDateInput(periodEnd),
+      totalDays: numberOfDaysInclusive(periodStart, periodEnd),
+    }
+  }
+
+  return { startDate: formatDateInput(today), endDate: formatDateInput(today), totalDays: 1 }
 }
 
 export const getActiveBudgetForCategory = ({ categoryId, budgets = [], today = new Date() }) => {
