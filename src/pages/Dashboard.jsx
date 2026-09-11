@@ -5,16 +5,36 @@ import CategoryBreakdownChart from '../components/charts/CategoryBreakdownChart.
 import { buildCategoryBreakdownData, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
 import filterExpensesByDate from '../services/filterExpensesByDate.js'
 import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
-  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    try {
+      return localStorage.getItem('finance-tracker-selected-category') || 'all'
+    } catch {
+      return 'all'
+    }
+  })
   const [rangeKey, setRangeKey] = useState('6m')
   const [budgetPeriod, setBudgetPeriod] = useState('15_days')
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   const [visibleMetrics, setVisibleMetrics] = useState({ spent: true, cashLeft: true, allocated: false, availableToAllocate: true })
   const [metricOrder] = useState(['cashLeft', 'spent', 'availableToAllocate', 'allocated'])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('finance-tracker-selected-category', selectedCategory)
+    } catch {
+      // Ignore storage errors and keep the selection in React state.
+    }
+  }, [selectedCategory])
+
+  useEffect(() => {
+    if (selectedCategory !== 'all' && !categoryEntries.some((category) => category.name === selectedCategory)) {
+      setSelectedCategory('all')
+    }
+  }, [categoryEntries, selectedCategory])
 
   const monthStart = selectedMonth ? `${selectedMonth}-01` : ''
   const monthEnd = selectedMonth ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0).toISOString().slice(0, 10) : ''
