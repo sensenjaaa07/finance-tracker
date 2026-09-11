@@ -14,18 +14,66 @@
 .edit-action-row { grid-template-columns: repeat(2, minmax(0, 180px)); justify-content: center; }
 .budget-card-button { width: 100%; max-width: 220px; justify-self: center; padding: 0.55rem 0.9rem; border: 1px solid transparent; border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold); cursor: pointer; transition: all var(--transition-fast) ease; }
 .budget-card-button:hover { transform: translateY(-1px); }
+.budget-card-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .budget-card-button-save, .budget-card-button-cancel { border-color: var(--color-primary-dark); background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%); color: var(--text-inverse); }
 .budget-card-button-delete { border-color: rgba(239, 68, 68, 0.2); background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(225, 29, 72, 0.18) 100%); color: var(--color-secondary-dark); }
 .budget-card-delete-button { display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0; border: 1px solid rgba(239, 68, 68, 0.22); border-radius: var(--radius-full); background: rgba(239, 68, 68, 0.12); color: var(--color-secondary-dark); cursor: pointer; }
 .budget-card-delete-button:hover { background: rgba(239, 68, 68, 0.18); transform: scale(1.04); }
 .budget-card-delete-button span { font-size: 1.2rem; line-height: 1; }
 .delete-confirmation-text { margin-bottom: var(--spacing-md); color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.5; }
-.transfer-modal-card { width: min(100%, 520px); }
-.transfer-form-fields { gap: var(--spacing-md); }
-.transfer-field { display: flex; flex-direction: column; gap: 0.45rem; }
-.transfer-field select, .transfer-amount-input input { width: 100%; box-sizing: border-box; padding: 0.8rem 0.9rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-primary); font: inherit; }
-.transfer-amount-input { display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); overflow: hidden; }
-.transfer-amount-input span { padding-left: 0.9rem; color: var(--text-secondary); font-weight: var(--font-weight-semibold); }
+
+/* Transfer modal */
+.transfer-modal-card { width: min(900px, calc(100vw - 32px)); max-height: min(820px, calc(100vh - 32px)); overflow-y: auto; padding: 2rem; border: 1px solid rgba(16, 185, 129, 0.08); border-radius: 1.25rem; box-shadow: 0 28px 70px rgba(15, 23, 42, 0.2); }
+.transfer-modal-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 1rem; margin-bottom: 2rem; }
+.transfer-modal-icon, .transfer-summary-icon { display: grid; place-items: center; flex: 0 0 auto; width: 4rem; height: 4rem; border-radius: 1rem; background: rgba(16, 185, 129, 0.12); color: var(--color-primary-dark); }
+.transfer-modal-icon span { font-size: 2rem; font-weight: 700; line-height: 1; }
+.transfer-modal-title-group { min-width: 0; }
+.transfer-modal-title-group .chart-eyebrow { margin-bottom: 0.3rem; }
+.transfer-modal-title-group h3 { margin: 0 0 0.35rem; color: var(--text-primary); font-size: clamp(1.5rem, 2vw, 2rem); }
+.transfer-modal-title-group > p:last-child { margin: 0; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; }
+.transfer-modal-close { margin-top: 0; }
+.transfer-accounts-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 1rem; margin-bottom: 1.75rem; }
+.transfer-field { display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+.transfer-field select, .transfer-amount-input input { width: 100%; box-sizing: border-box; padding: 0.9rem 1rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: var(--bg-card); color: var(--text-primary); font: inherit; font-size: 0.98rem; }
+.transfer-field select:focus, .transfer-amount-input:focus-within { border-color: var(--color-primary); outline: 3px solid rgba(16, 185, 129, 0.14); }
+.transfer-balance { min-height: 1rem; color: var(--text-muted); font-size: 0.78rem; line-height: 1.35; }
+.transfer-connector { display: flex; align-items: center; justify-content: center; gap: 0.6rem; min-width: 8rem; padding-top: 1.6rem; }
+.transfer-line { width: 2.5rem; height: 1px; background: rgba(16, 185, 129, 0.28); }
+.transfer-arrow { display: grid; place-items: center; width: 3rem; height: 3rem; flex: 0 0 auto; border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 50%; background: #fff; color: var(--color-primary-dark); font-size: 1.45rem; font-weight: 600; }
+.transfer-amount-field { margin-bottom: 1.5rem; }
+.transfer-amount-input { display: flex; align-items: center; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.75rem; background: var(--bg-card); overflow: hidden; }
+.transfer-amount-input span { display: grid; place-items: center; min-width: 3.5rem; padding: 0 0.85rem; align-self: stretch; border-right: 1px solid #e2e8f0; color: var(--text-secondary); font-size: 1.1rem; font-weight: var(--font-weight-semibold); }
 .transfer-amount-input input { border: 0; outline: 0; }
-.transfer-arrow { display: grid; place-items: center; width: 2rem; height: 2rem; margin: -0.15rem auto; border: 1px solid var(--border-light); border-radius: var(--radius-full); background: var(--bg-subtle, #f8fafc); color: var(--text-muted); font-weight: var(--font-weight-semibold); }
-@media (max-width: 560px) { .entry-list { grid-template-columns: 1fr; padding-right: var(--spacing-md); padding-left: var(--spacing-md); } .budget-card-metrics { grid-template-columns: 1fr; } .transfer-modal-card { width: 100%; } .edit-action-row { grid-template-columns: 1fr; } }
+.transfer-amount-input input::placeholder { color: #94a3b8; }
+.transfer-summary { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; padding: 1rem 1.25rem; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 1rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.015)); }
+.transfer-summary.is-ready { background: linear-gradient(135deg, rgba(16, 185, 129, 0.11), rgba(16, 185, 129, 0.035)); }
+.transfer-summary-icon { width: 3.2rem; height: 3.2rem; border-radius: 50%; }
+.transfer-summary-icon { font-size: 1.5rem; font-weight: 700; }
+.transfer-summary strong { display: block; margin-bottom: 0.3rem; color: #065f46; font-size: 1rem; }
+.transfer-summary p { margin: 0; color: #4f7f77; font-size: 0.9rem; line-height: 1.5; }
+.transfer-modal-actions { grid-template-columns: minmax(160px, 1fr) minmax(180px, 1fr); justify-content: end; gap: 0.75rem; margin-top: 0; }
+.transfer-modal-actions .budget-card-button { max-width: none; min-height: 3.2rem; font-size: 0.98rem; }
+.transfer-modal-actions .budget-card-button-cancel { border-color: rgba(16, 185, 129, 0.35); background: transparent; color: var(--color-primary-dark); }
+.transfer-modal-actions .budget-card-button-cancel:hover { background: rgba(16, 185, 129, 0.06); }
+
+@media (max-width: 760px) {
+  .entry-list { grid-template-columns: 1fr; padding-right: var(--spacing-md); padding-left: var(--spacing-md); }
+  .budget-card-metrics { grid-template-columns: 1fr; }
+  .transfer-modal-card { width: calc(100vw - 24px); padding: 1.25rem; border-radius: 1rem; }
+  .transfer-modal-heading { grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .transfer-modal-icon { width: 3.25rem; height: 3.25rem; border-radius: 0.8rem; }
+  .transfer-modal-icon span { font-size: 1.6rem; }
+  .transfer-accounts-row { grid-template-columns: 1fr; gap: 0.75rem; }
+  .transfer-connector { min-width: 0; padding: 0; }
+  .transfer-line { flex: 1; }
+  .transfer-arrow { width: 2.4rem; height: 2.4rem; font-size: 1.15rem; }
+  .transfer-summary { align-items: flex-start; padding: 0.9rem; }
+  .transfer-summary-icon { width: 2.8rem; height: 2.8rem; }
+  .transfer-modal-actions { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .transfer-modal-heading { grid-template-columns: auto 1fr auto; }
+  .transfer-modal-title-group > p:last-child { font-size: 0.85rem; }
+  .transfer-modal-actions { grid-template-columns: 1fr; }
+}
