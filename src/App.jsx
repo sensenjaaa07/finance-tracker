@@ -49,7 +49,18 @@ function App() {
     const totalAmount = matchingEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
     return matchingEntries.length > 0 ? { ...definition, amount: totalAmount } : { ...definition, amount: 0 }
   })
-  const netWorthEntries = cycleKeysToDisplay.flatMap((key) => netWorthEntriesByMonth[key] ?? [])
+  // Account cards represent accounts, not separate copies of the same account
+  // stored in different budget cycles. Prefer the currently selected cycle when
+  // the same account exists in more than one cycle so the UI stays consistent.
+  const netWorthEntries = cycleKeysToDisplay
+    .flatMap((key) => netWorthEntriesByMonth[key] ?? [])
+    .reduce((entries, entry) => {
+      const existingIndex = entries.findIndex(existing => existing.id === entry.id)
+      if (existingIndex === -1) return [...entries, entry]
+      const next = [...entries]
+      next[existingIndex] = entry
+      return next
+    }, [])
 
   const getCycleRange = (monthValue, cycleMode) => {
     if (!monthValue) return { monthStart: '', monthEnd: '' }
@@ -194,7 +205,7 @@ function App() {
       if (categoryRequest.selectedEntryId === 'new') {
         const newCategoryDefinition = { id: categoryRequest.entry.id, name: categoryRequest.entry.name }
         if (!categoryDefinitions.some(entry => entry.name === newCategoryDefinition.name)) setCategoryDefinitions(previous => [...previous, newCategoryDefinition])
-        setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter(entry => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name), { ...newCategoryDefinition, amount: categoryRequest.entry.amount }] }))
+        setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name), { ...newCategoryDefinition, amount: categoryRequest.entry.amount }] }))
         setActiveForm(null); setToastMessage('Your category was saved successfully.')
       } else {
         const currentCategory = categoryDefinitions.find(entry => entry.id === categoryRequest.entry.id)
