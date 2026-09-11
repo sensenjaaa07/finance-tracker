@@ -37,7 +37,17 @@ export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new
     return { startDate: formatDateInput(customStart), endDate: formatDateInput(safeEnd), totalDays: numberOfDaysInclusive(customStart, safeEnd) }
   }
 
-  const periodDays = periodType === '7_days' ? 7 : periodType === '30_days' ? 30 : 15
+  if (periodType === 'monthly') {
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    return {
+      startDate: formatDateInput(monthStart),
+      endDate: formatDateInput(monthEnd),
+      totalDays: numberOfDaysInclusive(monthStart, monthEnd),
+    }
+  }
+
+  const periodDays = periodType === '7_days' ? 7 : 15
   return { startDate: formatDateInput(today), endDate: formatDateInput(addDays(today, periodDays - 1)), totalDays: periodDays }
 }
 
@@ -89,9 +99,6 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     return sum + Number(expense.amount ?? 0)
   }, 0)
 
-  // Today's allowance includes any surplus or excess carried forward from
-  // previous days. After today's spending, the remaining budget is spread
-  // across the future days so the recommended allowance updates dynamically.
   const futureDays = Math.max(remainingDays - 1, 0)
   const todaysAllowance = remainingDays > 0 && remainingBudget + todaysExpenses >= 0
     ? (remainingBudget + todaysExpenses) / remainingDays
