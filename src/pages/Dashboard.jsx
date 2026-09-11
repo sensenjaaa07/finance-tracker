@@ -69,13 +69,30 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   const budgetMetrics = useMemo(() => {
     if (!budgetCategory) return null
     const activeBudget = getActiveBudgetForCategory({ categoryId: budgetCategory.id, budgets })
+    const amount = activeBudget?.amount ?? budgetCategory.amount ?? 0
+
+    // For a 15-day daily budget, the header's 1–15 / 16–end cycle is the source of truth.
+    // Use the selected header month so changing the header period immediately changes this range.
+    if (budgetPeriod === '15_days') {
+      const anchorDate = budgetCycle === 'fortnightly-2'
+        ? `${selectedMonth}-16`
+        : `${selectedMonth}-01`
+      return calculateCategoryBudgetMetrics({
+        category: budgetCategory,
+        amount,
+        periodType: '15_days',
+        headerCycle: budgetCycle,
+        expenses: expenseEntries,
+        today: anchorDate,
+      })
+    }
+
     if (activeBudget && budgetPeriod === activeBudget.periodType && budgetPeriod !== 'custom') {
       return calculateCategoryBudgetMetrics({ category: budgetCategory, amount: activeBudget.amount, periodType: activeBudget.periodType, startDate: activeBudget.startDate, endDate: activeBudget.endDate, expenses: expenseEntries })
     }
     const range = budgetPeriod === 'custom' ? getBudgetRangeForPeriod('custom', new Date(), customStartDate, customEndDate) : getBudgetRangeForPeriod(budgetPeriod)
-    const amount = activeBudget?.amount ?? budgetCategory.amount ?? 0
     return calculateCategoryBudgetMetrics({ category: budgetCategory, amount, periodType: budgetPeriod, startDate: budgetPeriod === 'custom' ? range.startDate : undefined, endDate: budgetPeriod === 'custom' ? range.endDate : undefined, expenses: expenseEntries })
-  }, [budgetCategory, budgetPeriod, budgets, customEndDate, customStartDate, expenseEntries])
+  }, [budgetCategory, budgetCycle, budgetPeriod, budgets, customEndDate, customStartDate, expenseEntries, selectedMonth])
 
   const budgetPeriodLabel = budgetMetrics?.totalDays ? `${budgetMetrics.totalDays} days` : 'Custom range'
   const formatBudgetDate = (dateValue) => dateValue ? new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
