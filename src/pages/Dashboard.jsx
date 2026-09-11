@@ -45,7 +45,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   const filteredCategories = selectedCategory === 'all' ? categoryEntries : categoryEntries.filter((category) => category.name === selectedCategory)
   const selectedCategoryEntry = selectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === selectedCategory) ?? null
   const totalIncome = visibleIncome.reduce((total, entry) => total + entry.amount, 0)
-  const totalAllocated = selectedCategory === 'all' ? categoryEntries.reduce((total, entry) => total + entry.amount, 0) : (selectedCategoryEntry?.amount ?? 0)
+  const totalAllocated = categoryEntries.reduce((total, entry) => total + entry.amount, 0)
   const totalSpent = selectedCategory === 'all' ? visibleExpenses.reduce((total, entry) => total + entry.amount, 0) : visibleExpenses.filter((expense) => expense.category === selectedCategory).reduce((total, entry) => total + entry.amount, 0)
   const totalRemaining = selectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
   const selectedCategoryLabel = selectedCategory === 'all' ? 'All categories' : selectedCategory
