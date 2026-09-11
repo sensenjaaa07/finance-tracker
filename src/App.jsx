@@ -49,18 +49,15 @@ function App() {
     const totalAmount = matchingEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
     return matchingEntries.length > 0 ? { ...definition, amount: totalAmount } : { ...definition, amount: 0 }
   })
-  // Account cards represent accounts, not separate copies of the same account
-  // stored in different budget cycles. Prefer the currently selected cycle when
-  // the same account exists in more than one cycle so the UI stays consistent.
-  const netWorthEntries = cycleKeysToDisplay
-    .flatMap((key) => netWorthEntriesByMonth[key] ?? [])
-    .reduce((entries, entry) => {
-      const existingIndex = entries.findIndex(existing => existing.id === entry.id)
-      if (existingIndex === -1) return [...entries, entry]
-      const next = [...entries]
-      next[existingIndex] = entry
-      return next
-    }, [])
+
+  // Accounts are global and should not disappear when the budgeting period changes.
+  // Use the selected cycle's snapshot when available, then fall back to snapshots
+  // from other cycles so every existing account remains visible immediately.
+  const allAccountEntries = Object.values(netWorthEntriesByMonth).flatMap(entries => entries ?? [])
+  const currentAccountIds = new Set((netWorthEntriesByMonth[currentCycleKey] ?? []).map(entry => entry.id))
+  const netWorthEntries = allAccountEntries
+    .sort((a, b) => Number(currentAccountIds.has(b.id)) - Number(currentAccountIds.has(a.id)))
+    .reduce((entries, entry) => entries.some(existing => existing.id === entry.id) ? entries : [...entries, entry], [])
 
   const getCycleRange = (monthValue, cycleMode) => {
     if (!monthValue) return { monthStart: '', monthEnd: '' }
@@ -81,15 +78,17 @@ function App() {
   const changeAccountBalance = (accountId, delta) => {
     let changed = false
     setNetWorthEntriesByMonth(previous => {
-      const currentEntries = previous[currentCycleKey] ?? []
-      const nextEntries = currentEntries.map(entry => {
-        if (entry.id !== accountId) return entry
-        const nextAmount = Number(entry.amount ?? 0) + delta
-        if (nextAmount < 0) return entry
-        changed = true
-        return { ...entry, amount: nextAmount }
+      const next = { ...previous }
+      Object.keys(next).forEach(key => {
+        next[key] = (next[key] ?? []).map(entry => {
+          if (entry.id !== accountId) return entry
+          const nextAmount = Number(entry.amount ?? 0) + delta
+          if (nextAmount < 0) return entry
+          changed = true
+          return { ...entry, amount: nextAmount }
+        })
       })
-      return { ...previous, [currentCycleKey]: nextEntries }
+      return next
     })
     return changed
   }
@@ -119,22 +118,15 @@ function App() {
   function deleteExpenseEntry(expenseId) {
     const expenseToDelete = expenseEntries.find(entry => entry.id === expenseId)
     if (!expenseToDelete) return false
-
     setExpenseEntries(previous => previous.filter(entry => entry.id !== expenseId))
-
     const amount = Number(expenseToDelete.amount ?? 0)
     if (expenseToDelete.accountId && Number.isFinite(amount) && amount > 0) {
       const account = netWorthEntries.find(entry => entry.id === expenseToDelete.accountId)
       if (account) {
         changeAccountBalance(expenseToDelete.accountId, amount)
         setToastMessage(`₱${amount.toFixed(2)} was returned to ${account.name}.`)
-      } else {
-        setToastMessage('Transaction deleted successfully.')
-      }
-    } else {
-      setToastMessage('Transaction deleted successfully.')
-    }
-
+      } else setToastMessage('Transaction deleted successfully.')
+    } else setToastMessage('Transaction deleted successfully.')
     return true
   }
 
@@ -145,12 +137,20 @@ function App() {
     const nextAmount = Number(updatedEntry.amount)
     const nextName = updatedEntry.name?.trim() ?? ''
     if (!Number.isFinite(nextAmount) || nextAmount < 0 || !nextName) return false
-    setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).map(entry => entry.id === netWorthId ? { ...entry, name: nextName, amount: nextAmount } : entry) }))
+    setNetWorthEntriesByMonth(previous => {
+      const next = { ...previous }
+      Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).map(entry => entry.id === netWorthId ? { ...entry, name: nextName, amount: nextAmount } : entry) })
+      return next
+    })
     return true
   }
 
   function deleteNetWorthEntry(netWorthId) {
-    setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).filter(entry => entry.id !== netWorthId) }))
+    setNetWorthEntriesByMonth(previous => {
+      const next = { ...previous }
+      Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== netWorthId) })
+      return next
+    })
     return true
   }
 
@@ -159,15 +159,16 @@ function App() {
     const destination = netWorthEntries.find(entry => entry.id === toId)
     if (!source || !destination || fromId === toId || amount <= 0) return false
     if (Number(source.amount ?? 0) < amount) { setToastMessage(`Insufficient balance in ${source.name}.`); return false }
-
     setNetWorthEntriesByMonth(previous => {
-      const currentEntries = previous[currentCycleKey] ?? []
-      const nextEntries = currentEntries.map(entry => {
-        if (entry.id === fromId) return { ...entry, amount: Number(entry.amount ?? 0) - amount }
-        if (entry.id === toId) return { ...entry, amount: Number(entry.amount ?? 0) + amount }
-        return entry
+      const next = { ...previous }
+      Object.keys(next).forEach(key => {
+        next[key] = (next[key] ?? []).map(entry => {
+          if (entry.id === fromId) return { ...entry, amount: Number(entry.amount ?? 0) - amount }
+          if (entry.id === toId) return { ...entry, amount: Number(entry.amount ?? 0) + amount }
+          return entry
+        })
       })
-      return { ...previous, [currentCycleKey]: nextEntries }
+      return next
     })
     const transfer = { id: crypto.randomUUID(), type: 'transfer', date: new Date(), fromAccountId: fromId, fromAccount: source.name, toAccountId: toId, toAccount: destination.name, amount }
     setTransfers(previous => [...previous, transfer])
@@ -177,7 +178,6 @@ function App() {
 
   function handleAddFormSubmit(event) {
     event.preventDefault()
-
     if (activeForm === 'Expenses') {
       const expenseEntry = createExpenseFromForm(event)
       if (!expenseEntry) return
@@ -190,13 +190,11 @@ function App() {
       setToastMessage(`₱${expenseEntry.amount.toFixed(2)} deducted from ${account.name}.`)
       return
     }
-
     if (activeForm === 'Income') {
       const incomeEntry = createIncomeFromForm(event)
       if (incomeEntry) { setIncomeEntries(previous => [...previous, incomeEntry]); setActiveForm(null); setToastMessage('Your income was saved successfully.') }
       return
     }
-
     if (activeForm === 'Categories') {
       const categoryRequest = createCategoriesFromForm(event)
       if (!categoryRequest) return
@@ -214,7 +212,6 @@ function App() {
       }
       return
     }
-
     if (activeForm === 'Net-Worth') {
       const accountRequest = createNetWorthFromForm(event)
       if (!accountRequest) return
@@ -222,12 +219,15 @@ function App() {
         setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []), accountRequest.entry] }))
         setActiveForm(null); setToastMessage('Your account was added successfully.')
       } else {
-        setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).map(entry => entry.id === accountRequest.entry.id ? { ...entry, amount: Number(entry.amount ?? 0) + accountRequest.entry.amount } : entry) }))
+        setNetWorthEntriesByMonth(previous => {
+          const next = { ...previous }
+          Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).map(entry => entry.id === accountRequest.entry.id ? { ...entry, amount: Number(entry.amount ?? 0) + accountRequest.entry.amount } : entry) })
+          return next
+        })
         setActiveForm(null); setToastMessage('Money was added to your account successfully.')
       }
       return
     }
-
     event.target.reset(); setActiveForm(null); setToastMessage(`${activeForm} was saved successfully.`)
   }
 
