@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
@@ -6,7 +6,45 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
   const [editingExpense, setEditingExpense] = useState(null)
   const [pendingDeleteExpense, setPendingDeleteExpense] = useState(null)
   const [draft, setDraft] = useState({ title: '', category: '', amount: '', date: '', accountId: '' })
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [accountFilter, setAccountFilter] = useState('all')
+  const [searchFilter, setSearchFilter] = useState('')
+
   const categoryOptions = categoryEntries.map(category => category.name)
+  const accountOptions = accounts.map(account => account.name)
+
+  const filteredExpenses = useMemo(() => expenseEntries.filter(expense => {
+    if (typeFilter === 'transfer') return false
+    if (categoryFilter !== 'all' && expense.category !== categoryFilter) return false
+    const accountName = accounts.find(account => account.id === expense.accountId)?.name || expense.account || 'Account not recorded'
+    if (accountFilter !== 'all' && accountName !== accountFilter) return false
+    if (searchFilter.trim()) {
+      const query = searchFilter.trim().toLowerCase()
+      if (!`${expense.title} ${expense.category} ${accountName}`.toLowerCase().includes(query)) return false
+    }
+    return true
+  }), [expenseEntries, accounts, typeFilter, categoryFilter, accountFilter, searchFilter])
+
+  const filteredTransfers = useMemo(() => transfers.filter(transfer => {
+    if (typeFilter === 'expense') return false
+    if (accountFilter !== 'all' && transfer.fromAccount !== accountFilter && transfer.toAccount !== accountFilter) return false
+    if (searchFilter.trim()) {
+      const query = searchFilter.trim().toLowerCase()
+      if (!`${transfer.fromAccount} ${transfer.toAccount} account transfer`.toLowerCase().includes(query)) return false
+    }
+    return true
+  }), [transfers, typeFilter, accountFilter, searchFilter])
+
+  const clearFilters = () => {
+    setTypeFilter('all')
+    setCategoryFilter('all')
+    setAccountFilter('all')
+    setSearchFilter('')
+  }
+
+  const hasFilters = typeFilter !== 'all' || categoryFilter !== 'all' || accountFilter !== 'all' || searchFilter.trim() !== ''
+  const transactionCount = filteredExpenses.length + filteredTransfers.length
 
   const handleEditStart = (expenseEntry) => {
     setEditingExpense(expenseEntry)
@@ -31,11 +69,20 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
   return (
     <div>
       <Header pageTitle="Transactions" onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} />
+      <div className="transactions-filter-bar">
+        <div className="transactions-filter-header"><div><p className="chart-eyebrow">Transaction filters</p><strong>{transactionCount} {transactionCount === 1 ? 'transaction' : 'transactions'}</strong></div>{hasFilters && <button type="button" className="transaction-filter-clear" onClick={clearFilters}>Clear filters</button>}</div>
+        <div className="transactions-filter-controls">
+          <div className="transaction-filter-search"><label htmlFor="transaction-search">Search</label><input id="transaction-search" type="search" placeholder="Search transactions..." value={searchFilter} onChange={event => setSearchFilter(event.target.value)} /></div>
+          <div><label htmlFor="transaction-type-filter">Type</label><select id="transaction-type-filter" value={typeFilter} onChange={event => setTypeFilter(event.target.value)}><option value="all">All types</option><option value="expense">Expenses</option><option value="transfer">Transfers</option></select></div>
+          <div><label htmlFor="transaction-category-filter">Category</label><select id="transaction-category-filter" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">All categories</option>{categoryOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></div>
+          <div><label htmlFor="transaction-account-filter">Account</label><select id="transaction-account-filter" value={accountFilter} onChange={event => setAccountFilter(event.target.value)}><option value="all">All accounts</option>{accountOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></div>
+        </div>
+      </div>
       <div className="transactions-table-wrapper">
-        {expenseEntries.length === 0 && transfers.length === 0 ? <p className="empty-state">No transactions have been recorded yet.</p> : <table className="transactions-table">
+        {transactionCount === 0 ? <p className="empty-state">{hasFilters ? 'No transactions match your filters.' : 'No transactions have been recorded yet.'}</p> : <table className="transactions-table">
           <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account</th><th className="transactions-amount">Amount</th><th className="transactions-actions">Actions</th></tr></thead>
           <tbody>
-            {expenseEntries.map(expenseEntry => {
+            {filteredExpenses.map(expenseEntry => {
               const accountName = accounts.find(account => account.id === expenseEntry.accountId)?.name || expenseEntry.account || 'Account not recorded'
               return <tr key={`expense-${expenseEntry.id}`}>
                 <td className="transaction-date">{expenseEntry.date.toLocaleDateString()}</td>
@@ -46,7 +93,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
                 <td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(expenseEntry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(expenseEntry)}>Delete</button></div></td>
               </tr>
             })}
-            {transfers.map(transfer => (
+            {filteredTransfers.map(transfer => (
               <tr key={`transfer-${transfer.id}`}>
                 <td className="transaction-date">{new Date(transfer.date).toLocaleDateString()}</td>
                 <td><span className="transaction-type transaction-type-transfer">Transfer</span></td>
