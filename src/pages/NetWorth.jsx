@@ -10,6 +10,10 @@ const Accounts = ({ netWorthEntries, onOpenAddForm, onUpdateNetWorthEntry, onDel
   const [showTransfer, setShowTransfer] = useState(false)
   const [transferDraft, setTransferDraft] = useState({ from: '', to: '', amount: '' })
   const totalBalance = netWorthEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const selectedFromAccount = netWorthEntries.find(account => account.id === transferDraft.from)
+  const selectedToAccount = netWorthEntries.find(account => account.id === transferDraft.to)
+  const transferAmount = Number(transferDraft.amount)
+  const hasTransferDetails = Boolean(selectedFromAccount && selectedToAccount && Number.isFinite(transferAmount) && transferAmount > 0)
 
   const handleEditStart = (entry) => { setEditingEntry(entry); setDraft({ name: entry.name, amount: String(entry.amount) }) }
   const handleSave = () => {
@@ -24,14 +28,15 @@ const Accounts = ({ netWorthEntries, onOpenAddForm, onUpdateNetWorthEntry, onDel
     onDeleteNetWorthEntry(pendingDeleteEntry.id)
     setPendingDeleteEntry(null)
   }
+  const closeTransfer = () => {
+    setShowTransfer(false)
+    setTransferDraft({ from: '', to: '', amount: '' })
+  }
   const handleTransfer = (event) => {
     event.preventDefault()
     const amount = Number(transferDraft.amount)
     if (!transferDraft.from || !transferDraft.to || transferDraft.from === transferDraft.to || !Number.isFinite(amount) || amount <= 0) return
-    if (onTransfer(transferDraft.from, transferDraft.to, amount)) {
-      setTransferDraft({ from: '', to: '', amount: '' })
-      setShowTransfer(false)
-    }
+    if (onTransfer(transferDraft.from, transferDraft.to, amount)) closeTransfer()
   }
 
   return (
@@ -61,15 +66,53 @@ const Accounts = ({ netWorthEntries, onOpenAddForm, onUpdateNetWorthEntry, onDel
 
       {showTransfer && <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="transfer-title">
         <form className="add-form edit-form transfer-modal-card" onSubmit={handleTransfer}>
-          <div className="add-form-header"><div><p className="chart-eyebrow">Account transfer</p><h3 id="transfer-title">Transfer money</h3></div><button className="add-form-close" type="button" onClick={() => setShowTransfer(false)} aria-label="Close transfer form">&times;</button></div>
-          <p className="delete-confirmation-text">Move money from one account to another. This will be logged in Transactions.</p>
-          <div className="add-form-fields transfer-form-fields">
-            <div className="transfer-field"><label className="add-form-label" htmlFor="transfer-from">From account</label><select id="transfer-from" value={transferDraft.from} onChange={(event) => setTransferDraft(previous => ({ ...previous, from: event.target.value }))} required><option value="">Choose an account</option>{netWorthEntries.map(account => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}</select></div>
-            <div className="transfer-arrow" aria-hidden="true">↓</div>
-            <div className="transfer-field"><label className="add-form-label" htmlFor="transfer-to">To account</label><select id="transfer-to" value={transferDraft.to} onChange={(event) => setTransferDraft(previous => ({ ...previous, to: event.target.value }))} required><option value="">Choose an account</option>{netWorthEntries.filter(account => account.id !== transferDraft.from).map(account => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}</select></div>
-            <div className="transfer-field"><label className="add-form-label" htmlFor="transfer-amount">Amount</label><div className="transfer-amount-input"><span>₱</span><input id="transfer-amount" type="number" min="0.01" step="0.01" placeholder="0.00" value={transferDraft.amount} onChange={(event) => setTransferDraft(previous => ({ ...previous, amount: event.target.value }))} required /></div></div>
+          <div className="transfer-modal-heading">
+            <div className="transfer-modal-icon" aria-hidden="true"><span>↔</span></div>
+            <div className="transfer-modal-title-group">
+              <p className="chart-eyebrow">Account transfer</p>
+              <h3 id="transfer-title">Transfer money</h3>
+              <p>Move money from one account to another. This will be logged in Transactions.</p>
+            </div>
+            <button className="add-form-close transfer-modal-close" type="button" onClick={closeTransfer} aria-label="Close transfer form">&times;</button>
           </div>
-          <div className="budget-card-actions edit-action-row"><button type="button" className="budget-card-button budget-card-button-cancel" onClick={() => setShowTransfer(false)}>Cancel</button><button type="submit" className="budget-card-button budget-card-button-save">Transfer money</button></div>
+
+          <div className="transfer-accounts-row">
+            <div className="transfer-field">
+              <label className="add-form-label" htmlFor="transfer-from">From account</label>
+              <select id="transfer-from" value={transferDraft.from} onChange={(event) => setTransferDraft(previous => ({ ...previous, from: event.target.value, to: previous.to === event.target.value ? '' : previous.to }))} required>
+                <option value="">Choose an account</option>
+                {netWorthEntries.map(account => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}
+              </select>
+              <span className="transfer-balance">Available balance: ₱{Number(selectedFromAccount?.amount ?? 0).toFixed(2)}</span>
+            </div>
+
+            <div className="transfer-connector" aria-hidden="true"><span className="transfer-line" /><span className="transfer-arrow">→</span><span className="transfer-line" /></div>
+
+            <div className="transfer-field">
+              <label className="add-form-label" htmlFor="transfer-to">To account</label>
+              <select id="transfer-to" value={transferDraft.to} onChange={(event) => setTransferDraft(previous => ({ ...previous, to: event.target.value }))} required>
+                <option value="">Choose an account</option>
+                {netWorthEntries.filter(account => account.id !== transferDraft.from).map(account => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}
+              </select>
+              <span className="transfer-balance">Current balance: ₱{Number(selectedToAccount?.amount ?? 0).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div className="transfer-field transfer-amount-field">
+            <label className="add-form-label" htmlFor="transfer-amount">Amount</label>
+            <div className="transfer-amount-input"><span>₱</span><input id="transfer-amount" type="number" min="0.01" step="0.01" placeholder="Enter amount" value={transferDraft.amount} onChange={(event) => setTransferDraft(previous => ({ ...previous, amount: event.target.value }))} required /></div>
+            <span className="transfer-balance">{selectedFromAccount ? `Available after transfer: ₱${Math.max(0, Number(selectedFromAccount.amount ?? 0) - (Number.isFinite(transferAmount) ? transferAmount : 0)).toFixed(2)}` : 'Select an account to see the available balance.'}</span>
+          </div>
+
+          <div className={`transfer-summary ${hasTransferDetails ? 'is-ready' : ''}`}>
+            <div className="transfer-summary-icon" aria-hidden="true">↔</div>
+            <div>
+              <strong>Transfer Summary</strong>
+              {hasTransferDetails ? <p>₱{transferAmount.toFixed(2)} will move from <b>{selectedFromAccount.name}</b> to <b>{selectedToAccount.name}</b>.</p> : <p>Select both accounts and enter an amount to continue.</p>}
+            </div>
+          </div>
+
+          <div className="budget-card-actions edit-action-row transfer-modal-actions"><button type="button" className="budget-card-button budget-card-button-cancel" onClick={closeTransfer}>Cancel</button><button type="submit" className="budget-card-button budget-card-button-save" disabled={!hasTransferDetails}>Transfer money</button></div>
         </form>
       </div>}
 
