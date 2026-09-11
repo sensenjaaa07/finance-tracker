@@ -88,15 +88,15 @@ function App() {
   function updateCategoryAmount(categoryId, amount) {
     const safeAmount = Number(amount)
     if (!Number.isFinite(safeAmount) || safeAmount < 0) return false
-    const categoryDefinition = categoryDefinitions.find((entry) => entry.id === categoryId)
+    const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
     if (!categoryDefinition) return false
     setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name), { ...categoryDefinition, amount: safeAmount }] }))
     return true
   }
 
   function deleteCategoryEntry(categoryId) {
-    const categoryDefinition = categoryDefinitions.find((entry) => entry.id === categoryId)
-    setCategoryDefinitions(previous => previous.filter((entry) => entry.id !== categoryId))
+    const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
+    setCategoryDefinitions(previous => previous.filter(entry => entry.id !== categoryId))
     setCategoryEntriesByMonth(previous => { const next = { ...previous }; Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== categoryId && (!categoryDefinition || entry.name !== categoryDefinition.name)) }); return next })
     return true
   }
@@ -106,7 +106,24 @@ function App() {
   }
 
   function deleteExpenseEntry(expenseId) {
+    const expenseToDelete = expenseEntries.find(entry => entry.id === expenseId)
+    if (!expenseToDelete) return false
+
     setExpenseEntries(previous => previous.filter(entry => entry.id !== expenseId))
+
+    const amount = Number(expenseToDelete.amount ?? 0)
+    if (expenseToDelete.accountId && Number.isFinite(amount) && amount > 0) {
+      const account = netWorthEntries.find(entry => entry.id === expenseToDelete.accountId)
+      if (account) {
+        changeAccountBalance(expenseToDelete.accountId, amount)
+        setToastMessage(`₱${amount.toFixed(2)} was returned to ${account.name}.`)
+      } else {
+        setToastMessage('Transaction deleted successfully.')
+      }
+    } else {
+      setToastMessage('Transaction deleted successfully.')
+    }
+
     return true
   }
 
