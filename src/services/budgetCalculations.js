@@ -27,7 +27,7 @@ export const numberOfDaysInclusive = (startDate, endDate) => {
   return Math.round((end.getTime() - start.getTime()) / DAY_IN_MS) + 1
 }
 
-export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new Date(), customStartDate = '', customEndDate = '') => {
+export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new Date(), customStartDate = '', customEndDate = '', headerCycle = '') => {
   const today = parseLocalDate(anchorDate) ?? new Date()
 
   if (periodType === 'custom') {
@@ -60,8 +60,28 @@ export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new
     }
   }
 
-  // A 15-day budget always represents the calendar half-month: 1–15 or 16–end.
+  // A 15-day budget follows the header cycle when one is selected.
   if (periodType === '15_days') {
+    if (headerCycle === 'fortnightly-1') {
+      const periodStart = new Date(today.getFullYear(), today.getMonth(), 1)
+      const periodEnd = new Date(today.getFullYear(), today.getMonth(), 15)
+      return {
+        startDate: formatDateInput(periodStart),
+        endDate: formatDateInput(periodEnd),
+        totalDays: 15,
+      }
+    }
+
+    if (headerCycle === 'fortnightly-2') {
+      const periodStart = new Date(today.getFullYear(), today.getMonth(), 16)
+      const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      return {
+        startDate: formatDateInput(periodStart),
+        endDate: formatDateInput(periodEnd),
+        totalDays: numberOfDaysInclusive(periodStart, periodEnd),
+      }
+    }
+
     if (today.getDate() <= 15) {
       const periodStart = new Date(today.getFullYear(), today.getMonth(), 1)
       const periodEnd = new Date(today.getFullYear(), today.getMonth(), 15)
@@ -103,11 +123,11 @@ const matchesCategory = (expenseCategory, categoryName, categoryId) => {
   return normalizedExpense === String(categoryName ?? '').trim() || normalizedExpense === String(categoryId ?? '').trim()
 }
 
-export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodType = '15_days', startDate, endDate, expenses = [], today = new Date() }) => {
+export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodType = '15_days', startDate, endDate, expenses = [], today = new Date(), headerCycle = '' }) => {
   const categoryId = category?.id ?? ''
   const categoryName = category?.name ?? ''
   const totalBudget = Number(amount ?? 0)
-  const fallbackRange = getBudgetRangeForPeriod(periodType, today)
+  const fallbackRange = getBudgetRangeForPeriod(periodType, today, '', '', headerCycle)
   const selectedStart = parseLocalDate(startDate) || parseLocalDate(fallbackRange.startDate)
   const selectedEnd = parseLocalDate(endDate) || parseLocalDate(fallbackRange.endDate)
   const currentDate = parseLocalDate(today) ?? new Date()
