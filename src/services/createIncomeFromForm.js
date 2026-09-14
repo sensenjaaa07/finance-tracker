@@ -5,8 +5,9 @@ function createIncomeFromForm(event) {
   const title = form.title.value.trim()
   const amount = Number(form.amount.value)
   const date = new Date(form.date.value)
+  const accountId = form.accountId?.value || ''
 
-  if (!title || !Number.isFinite(amount) || amount <= 0 || Number.isNaN(date.getTime())) {
+  if (!title || !Number.isFinite(amount) || amount <= 0 || Number.isNaN(date.getTime()) || !accountId) {
     return null
   }
 
@@ -15,6 +16,7 @@ function createIncomeFromForm(event) {
     title,
     amount,
     date,
+    accountId,
   }
 }
 
