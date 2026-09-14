@@ -130,8 +130,59 @@ function App() {
     return true
   }
 
-  function updateIncomeEntry(incomeId, updatedEntry) { setIncomeEntries(previous => previous.map(entry => entry.id === incomeId ? { ...entry, ...updatedEntry } : entry)) }
-  function deleteIncomeEntry(incomeId) { setIncomeEntries(previous => previous.filter(entry => entry.id !== incomeId)); return true }
+  function updateIncomeEntry(incomeId, updatedEntry) {
+    const incomeToUpdate = incomeEntries.find(entry => entry.id === incomeId)
+    if (!incomeToUpdate) return false
+
+    const nextAmount = Number(updatedEntry.amount)
+    const nextAccountId = updatedEntry.accountId || ''
+    if (!nextAccountId || !Number.isFinite(nextAmount) || nextAmount <= 0) return false
+
+    const oldAmount = Number(incomeToUpdate.amount ?? 0)
+    const oldAccountId = incomeToUpdate.accountId
+
+    if (oldAccountId && oldAccountId !== nextAccountId) {
+      const oldAccount = netWorthEntries.find(entry => entry.id === oldAccountId)
+      if (oldAccount && Number(oldAccount.amount ?? 0) < oldAmount) {
+        setToastMessage(`Unable to move this income because ${oldAccount.name} does not have enough balance to reverse it.`)
+        return false
+      }
+    }
+
+    if (oldAccountId === nextAccountId && nextAmount > oldAmount) {
+      // The account will receive only the difference below.
+    }
+
+    setIncomeEntries(previous => previous.map(entry => entry.id === incomeId ? { ...entry, ...updatedEntry, amount: nextAmount, accountId: nextAccountId } : entry))
+
+    if (oldAccountId === nextAccountId) {
+      changeAccountBalance(nextAccountId, nextAmount - oldAmount)
+    } else {
+      if (oldAccountId && oldAmount > 0) changeAccountBalance(oldAccountId, -oldAmount)
+      changeAccountBalance(nextAccountId, nextAmount)
+    }
+
+    return true
+  }
+
+  function deleteIncomeEntry(incomeId) {
+    const incomeToDelete = incomeEntries.find(entry => entry.id === incomeId)
+    if (!incomeToDelete) return false
+
+    setIncomeEntries(previous => previous.filter(entry => entry.id !== incomeId))
+
+    const amount = Number(incomeToDelete.amount ?? 0)
+    if (incomeToDelete.accountId && Number.isFinite(amount) && amount > 0) {
+      const account = netWorthEntries.find(entry => entry.id === incomeToDelete.accountId)
+      if (account && Number(account.amount ?? 0) >= amount) {
+        changeAccountBalance(incomeToDelete.accountId, -amount)
+        setToastMessage(`₱${amount.toFixed(2)} was removed from ${account.name}.`)
+      } else {
+        setToastMessage('Income deleted, but the account balance could not be fully reversed.')
+      }
+    }
+    return true
+  }
 
   function updateNetWorthEntry(netWorthId, updatedEntry) {
     const nextAmount = Number(updatedEntry.amount)
@@ -192,7 +243,13 @@ function App() {
     }
     if (activeForm === 'Income') {
       const incomeEntry = createIncomeFromForm(event)
-      if (incomeEntry) { setIncomeEntries(previous => [...previous, incomeEntry]); setActiveForm(null); setToastMessage('Your income was saved successfully.') }
+      if (!incomeEntry) { setToastMessage('Please select an account for this income.'); return }
+      const account = netWorthEntries.find(entry => entry.id === incomeEntry.accountId)
+      if (!account) { setToastMessage('Please select a valid account.'); return }
+      changeAccountBalance(incomeEntry.accountId, incomeEntry.amount)
+      setIncomeEntries(previous => [...previous, incomeEntry])
+      setActiveForm(null)
+      setToastMessage(`₱${incomeEntry.amount.toFixed(2)} was added to ${account.name}.`)
       return
     }
     if (activeForm === 'Categories') {
@@ -242,7 +299,7 @@ function App() {
     <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
     <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} />} />
     <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} accounts={netWorthEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} />} />
-    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
+    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={netWorthEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
     <Route path="/net-worth" element={<NetWorth netWorthEntries={netWorthEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateNetWorthEntry={updateNetWorthEntry} onDeleteNetWorthEntry={deleteNetWorthEntry} onTransfer={handleTransfer} />} />
   </Routes></main>{renderCard()}{toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}</div>
 }
