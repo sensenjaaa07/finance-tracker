@@ -2,11 +2,13 @@ import { useState } from 'react'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Income = ({ incomeEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateIncomeEntry, onDeleteIncomeEntry }) => {
+const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateIncomeEntry, onDeleteIncomeEntry }) => {
   const [editingIncome, setEditingIncome] = useState(null)
   const [pendingDeleteIncome, setPendingDeleteIncome] = useState(null)
-  const [draft, setDraft] = useState({ title: '', amount: '', date: '' })
-  const totalIncome = incomeEntries.reduce((total, entry) => total + entry.amount, 0)
+  const [draft, setDraft] = useState({ title: '', amount: '', date: '', accountId: '' })
+  const totalIncome = incomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+
+  const getAccountName = (incomeEntry) => accounts.find(account => account.id === incomeEntry.accountId)?.name || incomeEntry.account || 'Account not recorded'
 
   const handleEditStart = (incomeEntry) => {
     setEditingIncome(incomeEntry)
@@ -14,35 +16,30 @@ const Income = ({ incomeEntries, onOpenAddForm, selectedMonth, onMonthChange, bu
       title: incomeEntry.title,
       amount: String(incomeEntry.amount),
       date: incomeEntry.date.toISOString().slice(0, 10),
+      accountId: incomeEntry.accountId || '',
     })
   }
 
   const handleSave = () => {
-    if (!onUpdateIncomeEntry || !editingIncome) {
-      return
-    }
+    if (!onUpdateIncomeEntry || !editingIncome) return
 
     const nextAmount = Number(draft.amount)
     const nextDate = new Date(draft.date)
 
-    if (!draft.title.trim() || !Number.isFinite(nextAmount) || nextAmount <= 0 || Number.isNaN(nextDate.getTime())) {
-      return
-    }
+    if (!draft.title.trim() || !draft.accountId || !Number.isFinite(nextAmount) || nextAmount <= 0 || Number.isNaN(nextDate.getTime())) return
 
     onUpdateIncomeEntry(editingIncome.id, {
       title: draft.title.trim(),
       amount: nextAmount,
       date: nextDate,
+      accountId: draft.accountId,
     })
 
     setEditingIncome(null)
   }
 
   const confirmDeleteIncome = () => {
-    if (!onDeleteIncomeEntry || !pendingDeleteIncome) {
-      return
-    }
-
+    if (!onDeleteIncomeEntry || !pendingDeleteIncome) return
     onDeleteIncomeEntry(pendingDeleteIncome.id)
     setPendingDeleteIncome(null)
   }
@@ -104,11 +101,15 @@ const Income = ({ incomeEntries, onOpenAddForm, selectedMonth, onMonthChange, bu
             <div className="budget-card-metrics">
               <div>
                 <span className="budget-card-label">Amount</span>
-                <p>₱{incomeEntry.amount.toFixed(2)}</p>
+                <p>₱{Number(incomeEntry.amount).toFixed(2)}</p>
               </div>
               <div>
                 <span className="budget-card-label">Date</span>
                 <p>{incomeEntry.date.toLocaleDateString()}</p>
+              </div>
+              <div>
+                <span className="budget-card-label">Account</span>
+                <p>{getAccountName(incomeEntry)}</p>
               </div>
             </div>
           </div>
@@ -125,6 +126,12 @@ const Income = ({ incomeEntries, onOpenAddForm, selectedMonth, onMonthChange, bu
             <div className="add-form-fields">
               <label className="add-form-label" htmlFor="income-edit-title">Source</label>
               <input id="income-edit-title" value={draft.title} onChange={(event) => setDraft((previousDraft) => ({ ...previousDraft, title: event.target.value }))} />
+
+              <label className="add-form-label" htmlFor="income-edit-account">Money coming from</label>
+              <select id="income-edit-account" value={draft.accountId} onChange={(event) => setDraft((previousDraft) => ({ ...previousDraft, accountId: event.target.value }))} required>
+                <option value="" disabled>Select an account</option>
+                {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+              </select>
 
               <div className="edit-form-grid">
                 <div>
