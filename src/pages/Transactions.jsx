@@ -11,6 +11,8 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [accountFilter, setAccountFilter] = useState('all')
   const [searchFilter, setSearchFilter] = useState('')
+  const [sortField, setSortField] = useState('date')
+  const [sortDirection, setSortDirection] = useState('desc')
 
   const categoryOptions = categoryEntries.map(category => category.name)
   const accountOptions = accounts.map(account => account.name)
@@ -38,6 +40,32 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
     }
     return true
   }), [transfers, typeFilter, accountFilter, searchFilter])
+
+  const sortedTransactions = useMemo(() => {
+    const rows = [
+      ...filteredExpenses.map(entry => ({ type: 'expense', entry, date: new Date(entry.date), description: entry.title, account: getAccountName(entry), amount: Number(entry.amount ?? 0) })),
+      ...filteredTransfers.map(entry => ({ type: 'transfer', entry, date: new Date(entry.date), description: entry.fromAccount + ' → ' + entry.toAccount, account: entry.fromAccount + ' → ' + entry.toAccount, amount: Number(entry.amount ?? 0) }))
+    ]
+    return rows.sort((a, b) => {
+      let comparison = 0
+      if (sortField === 'date') comparison = a.date.getTime() - b.date.getTime()
+      else if (sortField === 'amount') comparison = a.amount - b.amount
+      else if (sortField === 'type') comparison = a.type.localeCompare(b.type)
+      else if (sortField === 'description') comparison = a.description.localeCompare(b.description)
+      else if (sortField === 'account') comparison = a.account.localeCompare(b.account)
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [filteredExpenses, filteredTransfers, sortDirection, sortField, accounts])
+
+  const handleSort = (field) => {
+    if (sortField === field) setSortDirection(previous => previous === 'asc' ? 'desc' : 'asc')
+    else {
+      setSortField(field)
+      setSortDirection(field === 'date' ? 'desc' : 'asc')
+    }
+  }
+
+  const sortIndicator = (field) => sortField === field ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''
 
   const clearFilters = () => {
     setTypeFilter('all')
@@ -100,6 +128,8 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
         .transaction-filter-field label { display:block; margin:0 0 .4rem .1rem; color:var(--text-muted); font-size:.68rem; font-weight:var(--font-weight-bold); letter-spacing:.06em; text-transform:uppercase; }
         .transaction-filter-field input, .transaction-filter-field select { width:100%; height:2.75rem; box-sizing:border-box; padding:0 .85rem; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-card); color:var(--text-primary); font:inherit; font-size:.84rem; outline:none; transition:border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease; }
         .transaction-filter-field input::placeholder { color:var(--text-muted); }
+        .transaction-sort-button { border:0; padding:0; background:transparent; color:inherit; font:inherit; font-weight:var(--font-weight-bold); cursor:pointer; }
+        .transaction-sort-button:hover { color:var(--color-primary-dark); }
         .transaction-filter-field input:focus, .transaction-filter-field select:focus { border-color:var(--color-primary); box-shadow:0 0 0 3px rgba(16,185,129,.1); }
 
         .transactions-mobile-list { display:none; }
@@ -167,13 +197,15 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
 
       <div className="transactions-table-wrapper">
         {transactionCount === 0 ? <p className="empty-state">{hasFilters ? 'No transactions match your filters.' : 'No transactions have been recorded yet.'}</p> : <table className="transactions-table">
-          <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account</th><th className="transactions-amount">Amount</th><th className="transactions-actions">Actions</th></tr></thead>
+          <thead><tr><th><button type="button" className="transaction-sort-button" onClick={() => handleSort('date')}>Date{sortIndicator('date')}</button></th><th><button type="button" className="transaction-sort-button" onClick={() => handleSort('type')}>Type{sortIndicator('type')}</button></th><th><button type="button" className="transaction-sort-button" onClick={() => handleSort('description')}>Description{sortIndicator('description')}</button></th><th><button type="button" className="transaction-sort-button" onClick={() => handleSort('account')}>Account{sortIndicator('account')}</button></th><th className="transactions-amount"><button type="button" className="transaction-sort-button" onClick={() => handleSort('amount')}>Amount{sortIndicator('amount')}</button></th><th className="transactions-actions">Actions</th></tr></thead>
           <tbody>
-            {filteredExpenses.map(expenseEntry => {
-              const accountName = getAccountName(expenseEntry)
-              return <tr key={`expense-${expenseEntry.id}`}><td className="transaction-date">{expenseEntry.date.toLocaleDateString()}</td><td><span className="transaction-type transaction-type-expense">Expense</span></td><td className="transaction-title-cell">{expenseEntry.title}<small>{expenseEntry.category}</small></td><td className="transaction-account-cell">{accountName}</td><td className="transactions-amount transaction-expense-amount">-₱{Number(expenseEntry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(expenseEntry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(expenseEntry)}>Delete</button></div></td></tr>
+            {sortedTransactions.map(({ type, entry }) => {
+              if (type === 'expense') {
+                const accountName = getAccountName(entry)
+                return <tr key={`expense-${entry.id}`}><td className="transaction-date">{entry.date.toLocaleDateString()}</td><td><span className="transaction-type transaction-type-expense">Expense</span></td><td className="transaction-title-cell">{entry.title}<small>{entry.category}</small></td><td className="transaction-account-cell">{accountName}</td><td className="transactions-amount transaction-expense-amount">-₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(entry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(entry)}>Delete</button></div></td></tr>
+              }
+              return <tr key={`transfer-${entry.id}`}><td className="transaction-date">{new Date(entry.date).toLocaleDateString()}</td><td><span className="transaction-type transaction-type-transfer">Transfer</span></td><td className="transaction-title-cell">{entry.fromAccount} → {entry.toAccount}<small>Account transfer</small></td><td className="transaction-account-cell">{entry.fromAccount} → {entry.toAccount}</td><td className="transactions-amount transaction-transfer-amount">₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><span className="transaction-logged">Logged</span></td></tr>
             })}
-            {filteredTransfers.map(transfer => <tr key={`transfer-${transfer.id}`}><td className="transaction-date">{new Date(transfer.date).toLocaleDateString()}</td><td><span className="transaction-type transaction-type-transfer">Transfer</span></td><td className="transaction-title-cell">{transfer.fromAccount} → {transfer.toAccount}<small>Account transfer</small></td><td className="transaction-account-cell">{transfer.fromAccount} → {transfer.toAccount}</td><td className="transactions-amount transaction-transfer-amount">₱{Number(transfer.amount).toFixed(2)}</td><td className="transactions-actions"><span className="transaction-logged">Logged</span></td></tr>)}
           </tbody>
         </table>}
       </div>
