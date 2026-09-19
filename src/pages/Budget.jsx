@@ -27,8 +27,7 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
       return
     }
 
-    onUpdateCategoryAmount(editingCategory.id, nextAmount)
-    setEditingCategory(null)
+    if (onUpdateCategoryAmount(editingCategory.id, nextAmount)) setEditingCategory(null)
     setDraftAmount('')
   }
 
