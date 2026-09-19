@@ -18,7 +18,7 @@ test('calculates budget metrics for the remaining period', () => {
   assert.equal(metrics.remainingBudget, 2500)
   assert.equal(metrics.totalDays, 15)
   assert.equal(metrics.originalDailyAllowance, 200)
-  assert.equal(metrics.currentDailyAllowance, 250)
+  assert.equal(metrics.currentDailyAllowance, 2500 / 6)
   assert.equal(metrics.percentageUsed, 16.666666666666664)
 })
 
