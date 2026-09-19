@@ -5,7 +5,7 @@ const EMPTY_DATA = {
   income: [],
   categories: [],
   categoryEntries: {},
-  netWorth: {},
+  accounts: [],
   transfers: [],
   budgets: [],
 }
@@ -24,13 +24,23 @@ const restoreDates = (value, key = '') => {
   return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, restoreDates(entryValue, entryKey)]))
 }
 
+const restoreAccounts = (data) => {
+  if (Array.isArray(data?.accounts)) return data.accounts
+  const legacyAccounts = data?.netWorth && typeof data.netWorth === 'object' ? Object.values(data.netWorth).flatMap((entries) => entries ?? []) : []
+  const byId = new Map()
+  legacyAccounts.forEach((entry) => {
+    if (entry?.id) byId.set(entry.id, entry)
+  })
+  return Array.from(byId.values())
+}
+
 const applyData = (data, setters) => {
   const restored = restoreDates(data ?? EMPTY_DATA)
   setters.setExpenseEntries(Array.isArray(restored?.expenses) ? restored.expenses : [])
   setters.setIncomeEntries(Array.isArray(restored?.income) ? restored.income : [])
   setters.setCategoryDefinitions(Array.isArray(restored?.categories) ? restored.categories : [])
   setters.setCategoryEntriesByMonth(restored?.categoryEntries && typeof restored.categoryEntries === 'object' ? restored.categoryEntries : {})
-  setters.setNetWorthEntriesByMonth(restored?.netWorth && typeof restored.netWorth === 'object' ? restored.netWorth : {})
+  setters.setAccountEntries(restoreAccounts(restored))
   setters.setTransfers(Array.isArray(restored?.transfers) ? restored.transfers : [])
   setters.setBudgets(Array.isArray(restored?.budgets) ? restored.budgets : [])
 }
