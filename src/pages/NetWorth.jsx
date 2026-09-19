@@ -49,8 +49,8 @@ const Accounts = ({ netWorthEntries, onOpenAddForm, onUpdateNetWorthEntry, onDel
 
       <div className="daily-budget-section" style={{ marginBottom: '24px' }}>
         <div className="daily-budget-header">
-          <div><p className="chart-eyebrow">Account transfers</p><h2>Move money between accounts</h2><p className="daily-budget-description">Transfer money without creating an expense.</p></div>
-          <button type="button" className="budget-card-button budget-card-button-save" onClick={() => setShowTransfer(true)}>Transfer money</button>
+          <div><p className="chart-eyebrow">Account transfers</p><h2>Move money between accounts</h2><p className="daily-budget-description">Transfer money without creating an expense.</p>{netWorthEntries.length < 2 && <p className="daily-budget-description">Add at least two accounts to enable transfers.</p>}</div>
+          <button type="button" className="budget-card-button budget-card-button-save" onClick={() => setShowTransfer(true)} disabled={netWorthEntries.length < 2}>Transfer money</button>
         </div>
       </div>
 
