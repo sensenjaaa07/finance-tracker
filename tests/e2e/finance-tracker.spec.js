@@ -10,7 +10,8 @@ const emptyDataset = {
   budgets: [],
 }
 
-const today = new Date().toISOString().slice(0, 10)
+const today = '2026-09-19'
+const seedMonth = '2026-09'
 
 const seedDataset = {
   expenses: [
@@ -27,7 +28,7 @@ const seedDataset = {
   income: [],
   categories: [{ id: 'category-food', name: 'Food' }],
   categoryEntries: {
-    [today.slice(0, 7) + '-monthly']: [{ id: 'category-food', name: 'Food', amount: 1000 }],
+    [seedMonth + '-monthly']: [{ id: 'category-food', name: 'Food', amount: 1000 }],
   },
   accounts: [
     { id: 'account-main', name: 'Main Account', amount: 2500 },
@@ -146,7 +147,7 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await expect(page.getByRole('heading', { name: 'Expenses by Category' })).toBeVisible()
 
   await page.getByRole('link', { name: 'Accounts' }).click()
-  await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Accounts', exact: true })).toBeVisible()
   await addAccount(page, 'Main Account', 10000)
   await addAccount(page, 'Savings', 2000)
 
@@ -209,6 +210,7 @@ test('desktop: blocks deleting an account with transaction history', async ({ pa
   test.skip(test.info().project.name !== 'chromium', 'Desktop workflow')
   await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
+  await page.addInitScript((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
   await page.reload()
   await expect(page.getByText('Lunch')).toBeVisible()
 
@@ -223,6 +225,7 @@ test('desktop: recovers from a cloud storage failure', async ({ page }) => {
   test.skip(test.info().project.name !== 'chromium', 'Desktop workflow')
   await page.unroute('**/api/data')
   await mockCloud(page, emptyDataset, { failFirstGet: true })
+  await page.goto('about:blank')
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Unable to connect to cloud storage' })).toBeVisible()
   await page.getByRole('button', { name: 'Retry connection' }).click()
@@ -233,6 +236,7 @@ test('mobile: transaction cards expose complete details in the popup', async ({ 
   test.skip(test.info().project.name !== 'mobile', 'Mobile workflow')
   await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
+  await page.addInitScript((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
   await page.goto('/transactions')
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
   await expect(page.locator('.transactions-mobile-list')).toBeVisible()
