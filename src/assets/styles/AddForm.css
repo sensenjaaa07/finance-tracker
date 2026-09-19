@@ -152,3 +152,19 @@
 		transform: translateY(0) scale(1);
 	}
 }
+
+
+.add-form-fields button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.add-form-fields button svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.add-form-close svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
