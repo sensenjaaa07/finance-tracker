@@ -38,6 +38,12 @@ function App() {
   const [toastMessage, setToastMessage] = useState('')
 
   const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, netWorth: netWorthEntriesByMonth, transfers, budgets }
+
+  try {
+    window.localStorage.setItem('finance-tracker-selected-month', selectedMonth)
+  } catch {
+    // Ignore storage errors; the selected month remains in React state.
+  }
   const { cloudReady, syncStatus, cloudError } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setNetWorthEntriesByMonth, setTransfers, setBudgets })
 
   const getCycleKey = (monthValue, cycleMode) => {
