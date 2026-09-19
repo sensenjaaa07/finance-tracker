@@ -325,14 +325,35 @@ function App() {
   }
 
   function updateNetWorthEntry(netWorthId, updatedEntry) {
-    const nextAmount = Number(updatedEntry.amount)
     const nextName = updatedEntry.name?.trim() ?? ''
-    if (!Number.isFinite(nextAmount) || nextAmount < 0 || !nextName) return false
-    setNetWorthEntriesByMonth(previous => {
-      const next = { ...previous }
-      Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).map(entry => entry.id === netWorthId ? { ...entry, name: nextName, amount: nextAmount } : entry) })
-      return next
-    })
+    if (!nextName) return false
+    const duplicate = accountEntries.some((entry) => entry.id !== netWorthId && entry.name.trim().toLowerCase() === nextName.toLowerCase())
+    if (duplicate) {
+      setToastMessage('Another account already uses that name.')
+      return false
+    }
+    setAccountEntries(previous => previous.map(entry => entry.id === netWorthId ? { ...entry, name: nextName } : entry))
+    setToastMessage('Account name updated successfully.')
+    return true
+  }
+
+  function adjustAccountBalance(accountId, direction, amount) {
+    const safeAmount = Number(amount)
+    const account = accountEntries.find(entry => entry.id === accountId)
+    if (!account || !Number.isFinite(safeAmount) || safeAmount <= 0) {
+      setToastMessage('Enter a valid balance adjustment amount.')
+      return false
+    }
+
+    const delta = direction === 'decrease' ? -safeAmount : safeAmount
+    const nextAmount = Number(account.amount ?? 0) + delta
+    if (nextAmount < 0) {
+      setToastMessage(`Cannot remove ₱${safeAmount.toFixed(2)} from ${account.name}.`)
+      return false
+    }
+
+    setAccountEntries(previous => previous.map(entry => entry.id === accountId ? { ...entry, amount: nextAmount } : entry))
+    setToastMessage(`Balance adjusted for ${account.name}. New balance: ₱${nextAmount.toFixed(2)}.`)
     return true
   }
 
@@ -346,11 +367,7 @@ function App() {
       return false
     }
 
-    setNetWorthEntriesByMonth(previous => {
-      const next = { ...previous }
-      Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== netWorthId) })
-      return next
-    })
+    setAccountEntries(previous => previous.filter(entry => entry.id !== netWorthId))
     setToastMessage('Account deleted successfully.')
     return true
   }
@@ -360,17 +377,11 @@ function App() {
     const destination = netWorthEntries.find(entry => entry.id === toId)
     if (!source || !destination || fromId === toId || amount <= 0) return false
     if (Number(source.amount ?? 0) < amount) { setToastMessage(`Insufficient balance in ${source.name}.`); return false }
-    setNetWorthEntriesByMonth(previous => {
-      const next = { ...previous }
-      Object.keys(next).forEach(key => {
-        next[key] = (next[key] ?? []).map(entry => {
-          if (entry.id === fromId) return { ...entry, amount: Number(entry.amount ?? 0) - amount }
-          if (entry.id === toId) return { ...entry, amount: Number(entry.amount ?? 0) + amount }
-          return entry
-        })
-      })
-      return next
-    })
+    setAccountEntries(previous => previous.map(entry => {
+      if (entry.id === fromId) return { ...entry, amount: Number(entry.amount ?? 0) - amount }
+      if (entry.id === toId) return { ...entry, amount: Number(entry.amount ?? 0) + amount }
+      return entry
+    }))
     const transfer = { id: crypto.randomUUID(), type: 'transfer', date: new Date(), createdAt: new Date(), fromAccountId: fromId, fromAccount: source.name, toAccountId: toId, toAccount: destination.name, amount }
     setTransfers(previous => [...previous, transfer])
     setToastMessage(`₱${amount.toFixed(2)} transferred from ${source.name} to ${destination.name}.`)
@@ -423,15 +434,15 @@ function App() {
       const accountRequest = createNetWorthFromForm(event)
       if (!accountRequest) return
       if (accountRequest.selectedEntryId === 'new') {
-        setNetWorthEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []), accountRequest.entry] }))
+        const duplicate = accountEntries.some((entry) => entry.name.trim().toLowerCase() === accountRequest.entry.name.trim().toLowerCase())
+        if (duplicate) { setToastMessage('An account with that name already exists.'); return }
+        setAccountEntries(previous => [...previous, accountRequest.entry])
         setActiveForm(null); setToastMessage('Your account was added successfully.')
       } else {
-        setNetWorthEntriesByMonth(previous => {
-          const next = { ...previous }
-          Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).map(entry => entry.id === accountRequest.entry.id ? { ...entry, amount: Number(entry.amount ?? 0) + accountRequest.entry.amount } : entry) })
-          return next
-        })
-        setActiveForm(null); setToastMessage('Money was added to your account successfully.')
+        if (changeAccountBalance(accountRequest.entry.id, accountRequest.entry.amount)) {
+          setActiveForm(null)
+          setToastMessage(`₱${Number(accountRequest.entry.amount).toFixed(2)} was added to your account.`)
+        }
       }
       return
     }
