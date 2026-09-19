@@ -56,10 +56,15 @@ export default function useCloudSync(data, setters) {
   const skipNextSave = useRef(false)
   const saveTimer = useRef(null)
   const settersRef = useRef(setters)
+  const dataRef = useRef(data)
 
   useEffect(() => {
     settersRef.current = setters
   }, [setters])
+
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
 
   useEffect(() => {
     let cancelled = false
@@ -94,7 +99,7 @@ export default function useCloudSync(data, setters) {
     saveTimer.current = setTimeout(async () => {
       try {
         setSyncStatus('saving')
-        const result = await saveCloudData(data)
+        const result = await saveCloudData(dataRef.current)
         latestUpdatedAt.current = Number(result?.updatedAt ?? Date.now())
         setCloudError('')
         setSyncStatus('connected')
