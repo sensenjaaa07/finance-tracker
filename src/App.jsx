@@ -221,7 +221,7 @@ function App() {
       })
       return next
     })
-    const transfer = { id: crypto.randomUUID(), type: 'transfer', date: new Date(), fromAccountId: fromId, fromAccount: source.name, toAccountId: toId, toAccount: destination.name, amount }
+    const transfer = { id: crypto.randomUUID(), type: 'transfer', date: new Date(), createdAt: new Date(), fromAccountId: fromId, fromAccount: source.name, toAccountId: toId, toAccount: destination.name, amount }
     setTransfers(previous => [...previous, transfer])
     setToastMessage(`₱${amount.toFixed(2)} transferred from ${source.name} to ${destination.name}.`)
     return true
