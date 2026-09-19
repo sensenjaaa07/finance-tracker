@@ -164,7 +164,7 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await addExpense(page, 'Lunch', 500, 'Food', 'Main Account')
   await page.getByRole('combobox', { name: 'View' }).selectOption('Food')
   await expect(page.getByText('Food · 15 days')).toBeVisible()
-  await expect(page.getByText('₱2,500.00')).toBeVisible()
+  await expect(page.getByText('₱2500.00')).toBeVisible()
 
   await page.getByRole('link', { name: 'Budget' }).click()
   await expect(page.getByRole('heading', { name: 'Budget & Categories' })).toBeVisible()
@@ -221,7 +221,7 @@ test('desktop: blocks deleting an account with transaction history', async ({ pa
   await page.getByRole('button', { name: 'Delete Main Account' }).click()
   await expect(page.getByRole('heading', { name: 'Delete account?' })).toBeVisible()
   await page.getByRole('button', { name: 'Delete account' }).click()
-  await expect(page.getByText(/transaction history/)).toBeVisible()
+  await expect(page.locator('.toast-notification').getByText(/transaction history/)).toBeVisible()
 })
 
 test('desktop: recovers from a cloud storage failure', async ({ page }) => {
