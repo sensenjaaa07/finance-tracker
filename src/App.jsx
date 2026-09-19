@@ -104,6 +104,58 @@ function App() {
     return true
   }
 
+  function reallocateBudget(fromCategoryId, toCategoryId, amount) {
+    const safeAmount = Number(amount)
+    if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId || !Number.isFinite(safeAmount) || safeAmount <= 0) {
+      setToastMessage('Choose two different categories and enter a valid amount.')
+      return false
+    }
+
+    const source = categoryEntries.find((entry) => entry.id === fromCategoryId)
+    const destination = categoryEntries.find((entry) => entry.id === toCategoryId)
+    if (!source || !destination) {
+      setToastMessage('Both budget categories must exist.')
+      return false
+    }
+
+    const sourceSpent = filteredExpenseEntries
+      .filter((expense) => expense.category === source.name)
+      .reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
+    const sourceRemaining = Number(source.amount ?? 0) - sourceSpent
+
+    if (sourceRemaining <= 0) {
+      setToastMessage(`${source.name} has no remaining budget available to move.`)
+      return false
+    }
+
+    if (safeAmount > sourceRemaining) {
+      setToastMessage(`You can only move up to ₱${sourceRemaining.toFixed(2)} from ${source.name}.`)
+      return false
+    }
+
+    setCategoryEntriesByMonth((previous) => {
+      const next = { ...previous }
+      const entries = [...(next[currentCycleKey] ?? [])]
+
+      const applyDelta = (category) => {
+        const index = entries.findIndex((entry) => entry.id === category.id || entry.name === category.name)
+        if (index >= 0) {
+          entries[index] = { ...entries[index], amount: Number(entries[index].amount ?? 0) + (category.id === fromCategoryId ? -safeAmount : safeAmount) }
+        } else {
+          entries.push({ ...category, amount: category.id === fromCategoryId ? -safeAmount : safeAmount })
+        }
+      }
+
+      applyDelta(source)
+      applyDelta(destination)
+      next[currentCycleKey] = entries
+      return next
+    })
+
+    setToastMessage(`₱${safeAmount.toFixed(2)} moved from ${source.name} to ${destination.name}.`)
+    return true
+  }
+
   function deleteCategoryEntry(categoryId) {
     const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
     setCategoryDefinitions(previous => previous.filter(entry => entry.id !== categoryId))
