@@ -46,7 +46,7 @@ function App() {
       // Ignore storage errors; the selected month remains in React state.
     }
   }, [selectedMonth])
-  const { cloudReady, syncStatus, cloudError } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setNetWorthEntriesByMonth, setTransfers, setBudgets })
+  const { cloudReady, syncStatus, cloudError, retryCloudSync } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setNetWorthEntriesByMonth, setTransfers, setBudgets })
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) return ''
@@ -459,7 +459,7 @@ function App() {
     return <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="add-form-title"><AddForm formType={activeForm} entries={activeForm === 'Categories' ? categoryEntries : activeForm === 'Net-Worth' ? netWorthEntries : categoryEntries} accounts={netWorthEntries} onSubmit={handleAddFormSubmit} onClose={() => setActiveForm(null)} /></div>
   }
 
-  if (!cloudReady) return <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}><div><h2>{syncStatus === 'offline' ? 'Unable to connect to Redis' : 'Loading your finance data…'}</h2><p>{cloudError || 'Reading the latest data from the cloud.'}</p></div></div>
+  if (!cloudReady) return <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}><div><h2>{syncStatus === 'offline' ? 'Unable to connect to cloud storage' : 'Loading your finance data…'}</h2><p>{cloudError || 'Reading the latest data from cloud storage.'}</p>{syncStatus === 'offline' && <button type="button" className="header-button" style={{ marginTop: '16px' }} onClick={retryCloudSync}>Retry connection</button>}</div></div>
 
   return <div className="app-container"><Navigation /><main className="content-container"><Routes>
     <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} allIncomeEntries={incomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
