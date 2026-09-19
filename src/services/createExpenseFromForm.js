@@ -10,7 +10,7 @@ function createExpenseFromForm(event) {
 
   if (!title || !category || !accountId || isNaN(amount) || amount <= 0 || Number.isNaN(date.getTime())) return null
 
-  const expenseEntry = { id, title, amount, date, category, accountId }
+  const expenseEntry = { id, title, amount, date, category, accountId, createdAt: new Date() }
   form.reset()
   return expenseEntry
 }
