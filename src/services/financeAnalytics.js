@@ -155,11 +155,7 @@ export const aggregateCategoryTotals = (entries = []) => {
   const categoryTotals = new Map()
 
   entries.forEach((entry) => {
-    const category = String(entry.category ?? '').trim()
-
-    if (!category) {
-      return
-    }
+    const category = String(entry.category ?? '').trim() || 'Uncategorized'
 
     categoryTotals.set(category, (categoryTotals.get(category) ?? 0) + Number(entry.amount ?? 0))
   })
@@ -342,11 +338,7 @@ export const buildCategoryBreakdownData = ({ expenseEntries = [], selectedMonth,
 
   const totals = new Map()
   relevantExpenses.forEach((entry) => {
-    const category = String(entry.category ?? '').trim()
-
-    if (!category) {
-      return
-    }
+    const category = String(entry.category ?? '').trim() || 'Uncategorized'
 
     totals.set(category, (totals.get(category) ?? 0) + Number(entry.amount ?? 0))
   })
