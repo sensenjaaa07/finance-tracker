@@ -5,9 +5,9 @@ const formDefinitions = {
   Expenses: {
     title: 'Expense',
     fields: [
-      { name: 'title', type: 'text', placeholder: 'Title' },
-      { name: 'amount', type: 'number', placeholder: 'Amount' },
-      { name: 'date', type: 'date', placeholder: 'Date' },
+      { name: 'title', type: 'text', label: 'Description', placeholder: 'e.g. Groceries' },
+      { name: 'amount', type: 'number', label: 'Amount', placeholder: '0.00' },
+      { name: 'date', type: 'date', label: 'Date' },
     ],
   },
   Categories: {
@@ -18,9 +18,9 @@ const formDefinitions = {
   Income: {
     title: 'Income',
     fields: [
-      { name: 'title', type: 'text', placeholder: 'Source' },
-      { name: 'amount', type: 'number', placeholder: 'Amount' },
-      { name: 'date', type: 'date', placeholder: 'Date' },
+      { name: 'title', type: 'text', label: 'Source', placeholder: 'e.g. Salary' },
+      { name: 'amount', type: 'number', label: 'Amount', placeholder: '0.00' },
+      { name: 'date', type: 'date', label: 'Date' },
     ],
   },
   'Net-Worth': {
@@ -74,10 +74,10 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
             </select>
           </>
         )}
-        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => <input key={field.name} {...field} required />)}
+        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => <div className="add-form-field" key={field.name}><label className="add-form-label" htmlFor={`${formType.toLowerCase()}-${field.name}`}>{field.label}</label><input id={`${formType.toLowerCase()}-${field.name}`} name={field.name} type={field.type} placeholder={field.placeholder} required /></div>)}
         {formType !== 'Expenses' && formType !== 'Income' && entryAction === 'new' && <input {...formDefinition.nameField} required />}
         {formType !== 'Expenses' && formType !== 'Income' && <input {...formDefinition.amountField} min="0.01" step="0.01" required />}
-        <button type="submit">Add</button>
+        <button type="submit" disabled={(formType === 'Expenses' || formType === 'Income') && accounts.length === 0}>{formType === 'Expenses' ? 'Add Expense' : formType === 'Income' ? 'Add Income' : formType === 'Categories' ? (entryAction === 'new' ? 'Add Category' : 'Add to Category') : (entryAction === 'new' ? 'Add Account' : 'Add to Account')}</button>
       </form>
     </div>
   )
