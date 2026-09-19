@@ -17,6 +17,7 @@ function createIncomeFromForm(event) {
     amount,
     date,
     accountId,
+    createdAt: new Date(),
   }
 }
 
