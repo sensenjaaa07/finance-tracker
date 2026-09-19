@@ -214,7 +214,7 @@ test('desktop: blocks deleting an account with transaction history', async ({ pa
 
   await page.getByRole('link', { name: 'Accounts' }).click()
   await page.getByRole('button', { name: 'Delete Main Account' }).click()
-  await page.getByRole('heading', { name: 'Delete account?' }).isVisible()
+  await expect(page.getByRole('heading', { name: 'Delete account?' })).toBeVisible()
   await page.getByRole('button', { name: 'Delete account' }).click()
   await expect(page.getByText(/transaction history/)).toBeVisible()
 })
