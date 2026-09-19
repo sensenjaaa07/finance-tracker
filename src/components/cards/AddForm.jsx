@@ -58,7 +58,7 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
         )}
         {formType === 'Income' && (
           <>
-            <label className="add-form-label" htmlFor="income-account">Money coming from</label>
+            <label className="add-form-label" htmlFor="income-account">Deposit into account</label>
             <select id="income-account" name="accountId" defaultValue="" required>
               <option value="" disabled>Select an account</option>
               {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}
