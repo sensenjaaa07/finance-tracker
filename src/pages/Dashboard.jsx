@@ -29,12 +29,6 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     }
   }, [selectedCategory])
 
-  useEffect(() => {
-    if (selectedCategory !== 'all' && selectedCategory !== 'Uncategorized' && !categoryEntries.some((category) => category.name === selectedCategory)) {
-      setSelectedCategory('all')
-    }
-  }, [categoryEntries, selectedCategory])
-
   const matchesRange = useCallback((dateValue) => {
     if (!selectedMonth || !dateValue) return false
     const date = new Date(dateValue)
@@ -60,14 +54,14 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
 
   const visibleIncome = rangeFilteredIncome
   const uncategorizedEntries = expenseEntries.filter((expense) => !expense.category || expense.category === 'Uncategorized')
-  const filteredCategories = selectedCategory === 'all' ? categoryEntries : selectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === selectedCategory)
-  const selectedCategoryEntry = selectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === selectedCategory) ?? null
+  const filteredCategories = resolvedSelectedCategory === 'all' ? categoryEntries : resolvedSelectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === selectedCategory)
+  const selectedCategoryEntry = resolvedSelectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === resolvedSelectedCategory) ?? null
   const totalIncome = incomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const analyticsIncomeTotal = visibleIncome.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAllocated = categoryEntries.reduce((total, entry) => total + entry.amount, 0)
-  const totalSpent = selectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === selectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-  const totalRemaining = selectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
-  const selectedCategoryLabel = selectedCategory === 'all' ? 'All categories' : selectedCategory
+  const totalSpent = resolvedSelectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === resolvedSelectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const totalRemaining = resolvedSelectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
+  const selectedCategoryLabel = resolvedSelectedCategory === 'all' ? 'All categories' : selectedCategory
   // Uncategorized spending uses money that has not been assigned to a budget category.
   // When Uncategorized is selected, reflect that spending by deducting it from the
   // amount still available to allocate instead of treating it as a separate budget.
@@ -88,7 +82,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
   const totalActualExpense = trendData.reduce((total, entry) => total + Number(entry.actualExpenses ?? 0), 0)
   const totalForecastExpense = trendData.reduce((total, entry) => total + Number(entry.forecastExpenses ?? 0), 0)
 
-  const budgetCategory = selectedCategory === 'all' || selectedCategory === 'Uncategorized' ? null : selectedCategoryEntry
+  const budgetCategory = resolvedSelectedCategory === 'all' || resolvedSelectedCategory === 'Uncategorized' ? null : selectedCategoryEntry
   const budgetMetrics = useMemo(() => {
     if (!budgetCategory) return null
     const activeBudget = getActiveBudgetForCategory({ categoryId: budgetCategory.id, budgets })
@@ -131,7 +125,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     <section>
       <Header pageTitle={"Overview"} onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} />
       <div className="dashboard-filter-bar">
-        <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{selectedCategory === "all" ? "All categories" : selectedCategory}</strong></span></div>
+        <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={resolvedSelectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{selectedCategory === "all" ? "All categories" : selectedCategory}</strong></span></div>
         <div className="dashboard-filter-group dashboard-visibility-group"><span>Visible metrics</span><div className="dashboard-visibility-toggle-group">{orderedMetricButtons.map((metric) => <button key={metric.key} type="button" className={`metric-toggle ${visibleMetrics[metric.key] ? 'is-visible' : 'is-hidden'}`} onClick={() => toggleMetric(metric.key)}>{metric.label}</button>)}</div></div>
         <div className="dashboard-filter-group dashboard-range-group"><label htmlFor="dashboard-range-filter">Analytics range</label><select id="dashboard-range-filter" value={rangeKey} onChange={(event) => setRangeKey(event.target.value)}><option value="month">This month</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="12m">Last 12 months</option><option value="year">This year</option></select></div>
       </div>
@@ -156,8 +150,8 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
       <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Income vs Expenses & Forecast</h2></div><div className="chart-summary-inline"><span>Income</span><strong>{formatCurrency(analyticsIncomeTotal)}</strong><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
 
       <div className="dashboard-section">
-        <h2>{selectedCategory === 'all' ? 'Budget left by category' : selectedCategory === 'Uncategorized' ? 'Uncategorized expenses' : `${selectedCategoryLabel} breakdown`}</h2>
-        {selectedCategory === 'Uncategorized'
+        <h2>{resolvedSelectedCategory === 'all' ? 'Budget left by category' : resolvedSelectedCategory === 'Uncategorized' ? 'Uncategorized expenses' : `${selectedCategoryLabel} breakdown`}</h2>
+        {resolvedSelectedCategory === 'Uncategorized'
           ? <div className="entry-list">
               {uncategorizedEntries.length === 0
                 ? <p className="empty-state">No uncategorized expenses found for this period.</p>
@@ -173,7 +167,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
                   ))}
             </div>
           : filteredCategories.length === 0
-            ? <p className="empty-state">{selectedCategory === 'all' ? 'Create a budget category to start tracking what is left.' : `No budget category named ${selectedCategoryLabel} has been created yet.`}</p>
+            ? <p className="empty-state">{resolvedSelectedCategory === 'all' ? 'Create a budget category to start tracking what is left.' : `No budget category named ${selectedCategoryLabel} has been created yet.`}</p>
             : <div className="entry-list">
                 {filteredCategories.map((category) => {
                   const spent = expenseEntries.filter((expense) => expense.category === category.name).reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
