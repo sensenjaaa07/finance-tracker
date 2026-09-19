@@ -127,7 +127,7 @@ const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, on
               <label className="add-form-label" htmlFor="income-edit-title">Source</label>
               <input id="income-edit-title" value={draft.title} onChange={(event) => setDraft((previousDraft) => ({ ...previousDraft, title: event.target.value }))} />
 
-              <label className="add-form-label" htmlFor="income-edit-account">Money coming from</label>
+              <label className="add-form-label" htmlFor="income-edit-account">Deposit into account</label>
               <select id="income-edit-account" value={draft.accountId} onChange={(event) => setDraft((previousDraft) => ({ ...previousDraft, accountId: event.target.value }))} required>
                 <option value="" disabled>Select an account</option>
                 {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
