@@ -54,6 +54,11 @@ export default function useCloudSync(data, setters) {
   const latestUpdatedAt = useRef(0)
   const skipNextSave = useRef(false)
   const saveTimer = useRef(null)
+  const settersRef = useRef(setters)
+
+  useEffect(() => {
+    settersRef.current = setters
+  }, [setters])
 
   useEffect(() => {
     let cancelled = false
@@ -64,7 +69,7 @@ export default function useCloudSync(data, setters) {
         if (cancelled) return
         latestUpdatedAt.current = Number(stored?.updatedAt ?? 0)
         skipNextSave.current = true
-        applyData(stored?.data ?? EMPTY_DATA, setters)
+        applyData(stored?.data ?? EMPTY_DATA, settersRef.current)
         setCloudError('')
         setCloudReady(true)
         setSyncStatus('connected')
@@ -111,7 +116,7 @@ export default function useCloudSync(data, setters) {
         if (!stored?.data || updatedAt <= latestUpdatedAt.current) return
         latestUpdatedAt.current = updatedAt
         skipNextSave.current = true
-        applyData(stored.data, setters)
+        applyData(stored.data, settersRef.current)
         setCloudError('')
         setSyncStatus('connected')
       } catch (error) {
