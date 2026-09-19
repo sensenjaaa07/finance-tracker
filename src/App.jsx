@@ -13,7 +13,7 @@ import createCategoriesFromForm from './services/createCategoriesFromForm.js'
 import createNetWorthFromForm from './services/createNetWorthFromForm.js'
 import filterExpensesByDate from './services/filterExpensesByDate.js'
 import useCloudSync from './services/useCloudSync.js'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 const EMPTY_DATA = { expenses: [], income: [], categories: [], categoryEntries: {}, netWorth: {}, transfers: [], budgets: [] }
@@ -39,11 +39,13 @@ function App() {
 
   const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, netWorth: netWorthEntriesByMonth, transfers, budgets }
 
-  try {
-    window.localStorage.setItem('finance-tracker-selected-month', selectedMonth)
-  } catch {
-    // Ignore storage errors; the selected month remains in React state.
-  }
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('finance-tracker-selected-month', selectedMonth)
+    } catch {
+      // Ignore storage errors; the selected month remains in React state.
+    }
+  }, [selectedMonth])
   const { cloudReady, syncStatus, cloudError } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setNetWorthEntriesByMonth, setTransfers, setBudgets })
 
   const getCycleKey = (monthValue, cycleMode) => {
