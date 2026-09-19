@@ -116,7 +116,7 @@ export default function useCloudSync(data, setters) {
       }
     }, 150)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.netWorth, data.transfers, data.budgets])
+  }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.accounts, data.transfers, data.budgets])
 
 
 
