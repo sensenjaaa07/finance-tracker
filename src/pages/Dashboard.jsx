@@ -91,19 +91,25 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
     const activeBudget = getActiveBudgetForCategory({ categoryId: budgetCategory.id, budgets })
     const amount = activeBudget?.amount ?? budgetCategory.amount ?? 0
 
-    // For a 15-day daily budget, the header's 1–15 / 16–end cycle is the source of truth.
-    // Use the selected header month so changing the header period immediately changes this range.
+    // The header cycle determines the budget range, but "Days elapsed" must
+    // always use the actual current date rather than the cycle's start date.
     if (budgetPeriod === '15_days') {
-      const anchorDate = budgetCycle === 'fortnightly-2'
-        ? `${selectedMonth}-16`
-        : `${selectedMonth}-01`
+      const periodRange = getBudgetRangeForPeriod(
+        '15_days',
+        new Date(),
+        '',
+        '',
+        budgetCycle
+      )
       return calculateCategoryBudgetMetrics({
         category: budgetCategory,
         amount,
         periodType: '15_days',
         headerCycle: budgetCycle,
+        startDate: periodRange.startDate,
+        endDate: periodRange.endDate,
         expenses: expenseEntries,
-        today: anchorDate,
+        today: new Date(),
       })
     }
 
