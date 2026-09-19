@@ -164,7 +164,7 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await addExpense(page, 'Lunch', 500, 'Food', 'Main Account')
   await page.getByRole('combobox', { name: 'View' }).selectOption('Food')
   await expect(page.getByText('Food · 15 days')).toBeVisible()
-  await expect(page.getByText('₱2500.00')).toBeVisible()
+  await expect(page.locator('.daily-budget-section').getByText('₱2500.00')).toBeVisible()
 
   await page.getByRole('link', { name: 'Budget' }).click()
   await expect(page.getByRole('heading', { name: 'Budget & Categories' })).toBeVisible()
