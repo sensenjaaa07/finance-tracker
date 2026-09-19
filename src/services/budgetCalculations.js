@@ -159,11 +159,11 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
   const nextDailyAllowance = futureDays > 0 && remainingBudget >= 0
     ? remainingBudget / futureDays
     : 0
-  const currentDailyAllowance = todaysExpenses > 0 && futureDays > 0
-    ? nextDailyAllowance
-    : remainingDays > 0 && remainingBudget >= 0
-      ? remainingBudget / remainingDays
-      : 0
+  // Current recommended daily spending is always based on the budget
+  // remaining across the days still remaining in the selected period.
+  const currentDailyAllowance = remainingDays > 0 && remainingBudget >= 0
+    ? remainingBudget / remainingDays
+    : 0
 
   const percentageUsed = totalBudget > 0 ? (spent / totalBudget) * 100 : 0
   const recommendedDailySpend = remainingBudget >= 0 ? currentDailyAllowance : 0
