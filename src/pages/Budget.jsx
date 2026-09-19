@@ -91,7 +91,7 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
         ) : categoryEntries.map((entry) => {
           const spent = expenseEntries
             .filter((expense) => expense.category === entry.name)
-            .reduce((total, expense) => total + expense.amount, 0)
+            .reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
           const remaining = entry.amount - spent
 
           return (
@@ -252,9 +252,9 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
               <h3 id="delete-category-title">Delete category?</h3>
               <button className="add-form-close" type="button" onClick={() => setPendingDeleteCategory(null)} aria-label="Close delete confirmation">&times;</button>
             </div>
-            <p className="delete-confirmation-text">This will remove {pendingDeleteCategory.name} and its saved allocation from the selected period.</p>
+            <p className="delete-confirmation-text">This permanently removes {pendingDeleteCategory.name} and all of its saved budget allocations. Existing expenses will be kept and moved to Uncategorized.</p>
             <div className="budget-card-actions single-action-row">
-              <button type="button" className="budget-card-button budget-card-button-delete" onClick={confirmDeleteCategory}>Delete</button>
+              <button type="button" className="budget-card-button budget-card-button-delete" onClick={confirmDeleteCategory}>Delete category</button>
             </div>
           </div>
         </div>
