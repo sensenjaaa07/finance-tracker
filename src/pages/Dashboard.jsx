@@ -31,7 +31,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   }, [selectedCategory])
 
   useEffect(() => {
-    if (selectedCategory !== 'all' && !categoryEntries.some((category) => category.name === selectedCategory)) {
+    if (selectedCategory !== 'all' && selectedCategory !== 'Uncategorized' && !categoryEntries.some((category) => category.name === selectedCategory)) {
       setSelectedCategory('all')
     }
   }, [categoryEntries, selectedCategory])
@@ -72,7 +72,8 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   // Uncategorized spending uses money that has not been assigned to a budget category.
   // When Uncategorized is selected, reflect that spending by deducting it from the
   // amount still available to allocate instead of treating it as a separate budget.
-  const totalAvailableToAllocate = totalIncome - totalAllocated - (selectedCategory === 'Uncategorized' ? totalSpent : 0)
+  const uncategorizedSpent = visibleExpenses.filter((expense) => !expense.category || expense.category === 'Uncategorized').reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const totalAvailableToAllocate = totalIncome - totalAllocated - uncategorizedSpent
 
   const toggleMetric = (metricKey) => setVisibleMetrics((previousState) => ({ ...previousState, [metricKey]: !previousState[metricKey] }))
   const metricCards = [
@@ -88,7 +89,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   const totalActualExpense = trendData.reduce((total, entry) => total + Number(entry.actualExpenses ?? 0), 0)
   const totalForecastExpense = trendData.reduce((total, entry) => total + Number(entry.forecastExpenses ?? 0), 0)
 
-  const budgetCategory = selectedCategory === 'all' ? null : selectedCategoryEntry
+  const budgetCategory = selectedCategory === 'all' || selectedCategory === 'Uncategorized' ? null : selectedCategoryEntry
   const budgetMetrics = useMemo(() => {
     if (!budgetCategory) return null
     const activeBudget = getActiveBudgetForCategory({ categoryId: budgetCategory.id, budgets })
