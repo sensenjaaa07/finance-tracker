@@ -234,6 +234,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
         {selectedIsExpense ? <div className="transaction-details-grid">
           <div className="transaction-detail-item full"><span>Description</span><strong>{selectedEntry.title}</strong></div>
           <div className="transaction-detail-item"><span>Date</span><strong>{selectedEntry.date.toLocaleDateString()}</strong></div>
+          <div className="transaction-detail-item"><span>Time added</span><strong>{formatAddedTime(selectedEntry.createdAt ?? selectedEntry.date)}</strong></div>
           <div className="transaction-detail-item"><span>Type</span><strong>Expense</strong></div>
           <div className="transaction-detail-item"><span>Category</span><strong>{selectedEntry.category || 'Uncategorized'}</strong></div>
           <div className="transaction-detail-item"><span>Account</span><strong>{getAccountName(selectedEntry)}</strong></div>
@@ -241,6 +242,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
         </div> : <div className="transaction-details-grid">
           <div className="transaction-detail-item full"><span>Transfer</span><strong>{selectedEntry.fromAccount} → {selectedEntry.toAccount}</strong></div>
           <div className="transaction-detail-item"><span>Date</span><strong>{new Date(selectedEntry.date).toLocaleDateString()}</strong></div>
+          <div className="transaction-detail-item"><span>Time added</span><strong>{formatAddedTime(selectedEntry.createdAt ?? selectedEntry.date)}</strong></div>
           <div className="transaction-detail-item"><span>Type</span><strong>Transfer</strong></div>
           <div className="transaction-detail-item"><span>From account</span><strong>{selectedEntry.fromAccount}</strong></div>
           <div className="transaction-detail-item"><span>To account</span><strong>{selectedEntry.toAccount}</strong></div>
