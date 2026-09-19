@@ -173,3 +173,56 @@
   width: 1.25rem;
   height: 1.25rem;
 }
+
+/* Card action consistency */
+.budget-card-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.budget-card-amount .budget-card-label {
+  flex: 0 0 auto;
+}
+.budget-card-amount strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+.budget-card-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.budget-card-button {
+  min-height: 2.9rem;
+  padding: 0.65rem 0.9rem;
+  line-height: 1.2;
+}
+.budget-card-button-secondary,
+.budget-card-button-reallocate {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.07);
+  color: var(--color-primary-dark);
+}
+.budget-card-button-secondary:hover,
+.budget-card-button-reallocate:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+}
+.budget-card-delete-button {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+.budget-card-delete-button svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+.budget-card-header-actions {
+  gap: 0.6rem;
+}
+.single-action-row {
+  grid-template-columns: minmax(0, 220px);
+}
+.edit-action-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
