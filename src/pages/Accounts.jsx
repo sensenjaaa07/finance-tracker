@@ -82,8 +82,8 @@ const Accounts = ({ accounts, onOpenAddForm, onUpdateAccount, onAdjustAccountBal
             <h3>{entry.name}</h3>
             <div className="budget-card-metrics"><div><span className="budget-card-label">Balance</span><p>₱{Number(entry.amount ?? 0).toFixed(2)}</p></div><div><span className="budget-card-label">Status</span><p>Active</p></div></div>
             <div className="budget-card-actions edit-action-row">
-              <button type="button" className="budget-card-button budget-card-button-cancel" onClick={() => handleEditStart(entry)}><FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />Edit name</button>
-              <button type="button" className="budget-card-button budget-card-button-reallocate" onClick={() => handleAdjustStart(entry)}><FontAwesomeIcon icon={faSliders} aria-hidden="true" />Adjust balance</button>
+              <button type="button" className="budget-card-button budget-card-button-secondary" onClick={() => handleEditStart(entry)}><FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />Edit name</button>
+              <button type="button" className="budget-card-button budget-card-button-secondary" onClick={() => handleAdjustStart(entry)}><FontAwesomeIcon icon={faSliders} aria-hidden="true" />Adjust balance</button>
             </div>
           </div>
         ))}
