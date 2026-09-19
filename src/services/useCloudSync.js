@@ -10,7 +10,6 @@ const EMPTY_DATA = {
   budgets: [],
 }
 
-const POLL_INTERVAL_MS = 3000
 
 const restoreDates = (value, key = '') => {
   if (Array.isArray(value)) return value.map((item) => restoreDates(item, key))
@@ -62,7 +61,6 @@ export default function useCloudSync(data, setters) {
   const [syncStatus, setSyncStatus] = useState('loading')
   const [cloudError, setCloudError] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const latestUpdatedAt = useRef(0)
   const skipNextSave = useRef(false)
   const saveTimer = useRef(null)
   const settersRef = useRef(setters)
@@ -83,7 +81,6 @@ export default function useCloudSync(data, setters) {
         const result = await readCloudData()
         const stored = result?.data
         if (cancelled) return
-        latestUpdatedAt.current = Number(stored?.updatedAt ?? 0)
         skipNextSave.current = true
         applyData(stored?.data ?? EMPTY_DATA, settersRef.current)
         setCloudError('')
@@ -110,7 +107,6 @@ export default function useCloudSync(data, setters) {
       try {
         setSyncStatus('saving')
         const result = await saveCloudData(dataRef.current)
-        latestUpdatedAt.current = Number(result?.updatedAt ?? Date.now())
         setCloudError('')
         setSyncStatus('connected')
       } catch (error) {
@@ -122,27 +118,7 @@ export default function useCloudSync(data, setters) {
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.netWorth, data.transfers, data.budgets])
 
-  useEffect(() => {
-    if (!cloudReady) return undefined
-    const checkRedis = async () => {
-      try {
-        const result = await readCloudData()
-        const stored = result?.data
-        const updatedAt = Number(stored?.updatedAt ?? 0)
-        if (!stored?.data || updatedAt <= latestUpdatedAt.current) return
-        latestUpdatedAt.current = updatedAt
-        skipNextSave.current = true
-        applyData(stored.data, settersRef.current)
-        setCloudError('')
-        setSyncStatus('connected')
-      } catch (error) {
-        console.error('Redis refresh failed:', error)
-        setSyncStatus('offline')
-      }
-    }
-    const intervalId = setInterval(checkRedis, POLL_INTERVAL_MS)
-    return () => clearInterval(intervalId)
-  }, [cloudReady])
+
 
   const retryCloudSync = () => {
     setCloudReady(false)
