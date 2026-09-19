@@ -1,5 +1,7 @@
 import '../../assets/styles/AddForm.css'
 import { useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXmark, faPlus } from '@fortawesome/free-solid-svg-icons'
 
 const formDefinitions = {
   Expenses: {
@@ -39,7 +41,7 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
     <div className="add-form">
       <div className="add-form-header">
         <h3 id="add-form-title">Add {formDefinition.title}</h3>
-        <button className="add-form-close" type="button" onClick={onClose} aria-label="Close add form">&times;</button>
+        <button className="add-form-close" type="button" onClick={onClose} aria-label="Close add form"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
       </div>
       <form className="add-form-fields" onSubmit={onSubmit}>
         {formType === 'Expenses' && (
@@ -79,7 +81,7 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
         {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => <div className="add-form-field" key={field.name}><label className="add-form-label" htmlFor={`${formType.toLowerCase()}-${field.name}`}>{field.label}</label><input id={`${formType.toLowerCase()}-${field.name}`} name={field.name} type={field.type} placeholder={field.placeholder} required /></div>)}
         {formType !== 'Expenses' && formType !== 'Income' && entryAction === 'new' && <input {...formDefinition.nameField} required />}
         {formType !== 'Expenses' && formType !== 'Income' && <input {...formDefinition.amountField} min="0.01" step="0.01" required />}
-        <button type="submit" disabled={(formType === 'Expenses' || formType === 'Income') && accounts.length === 0}>{formType === 'Expenses' ? 'Add Expense' : formType === 'Income' ? 'Add Income' : formType === 'Categories' ? (entryAction === 'new' ? 'Add Category' : 'Add to Category') : (entryAction === 'new' ? 'Add Account' : 'Add to Account')}</button>
+        <button type="submit" disabled={(formType === 'Expenses' || formType === 'Income') && accounts.length === 0}><FontAwesomeIcon icon={faPlus} aria-hidden="true" />{formType === 'Expenses' ? 'Add Expense' : formType === 'Income' ? 'Add Income' : formType === 'Categories' ? (entryAction === 'new' ? 'Add Category' : 'Add to Category') : (entryAction === 'new' ? 'Add Account' : 'Add to Account')}</button>
       </form>
     </div>
   )
