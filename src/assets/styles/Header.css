@@ -43,3 +43,10 @@ header.header-container {
     .header-period-controls { grid-template-columns:1fr; }
     .header-period-controls input, .header-period-controls select, .header-button { min-height:48px; }
 }
+
+
+.header-button svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+}
