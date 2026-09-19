@@ -42,16 +42,20 @@ test('prefers the most recently updated budget when active budgets overlap', () 
   assert.equal(active?.id, 'newer')
 })
 
-test('builds rolling budget ranges from the selected start date', () => {
+test('builds calendar-aligned budget ranges', () => {
   const sevenDays = getBudgetRangeForPeriod('7_days', '2026-09-10')
-  const fifteenDays = getBudgetRangeForPeriod('15_days', '2026-09-10')
-  const thirtyDays = getBudgetRangeForPeriod('30_days', '2026-09-10')
+  const fifteenDaysFirst = getBudgetRangeForPeriod('15_days', '2026-09-10')
+  const fifteenDaysSecond = getBudgetRangeForPeriod('15_days', '2026-09-20')
+  const monthly = getBudgetRangeForPeriod('monthly', '2026-09-10')
 
-  assert.deepEqual(sevenDays, { startDate: '2026-09-10', endDate: '2026-09-16', totalDays: 7 })
-  assert.deepEqual(fifteenDays, { startDate: '2026-09-10', endDate: '2026-09-24', totalDays: 15 })
-  assert.deepEqual(thirtyDays, { startDate: '2026-09-10', endDate: '2026-10-09', totalDays: 30 })
+  assert.deepEqual(sevenDays, { startDate: '2026-09-07', endDate: '2026-09-13', totalDays: 7 })
+  assert.deepEqual(fifteenDaysFirst, { startDate: '2026-09-01', endDate: '2026-09-15', totalDays: 15 })
+  assert.deepEqual(fifteenDaysSecond, { startDate: '2026-09-16', endDate: '2026-09-30', totalDays: 15 })
+  assert.deepEqual(monthly, { startDate: '2026-09-01', endDate: '2026-09-30', totalDays: 30 })
+
+  assert.deepEqual(getBudgetRangeForPeriod('15_days', '2026-09-10', '', '', 'fortnightly-1'), { startDate: '2026-09-01', endDate: '2026-09-15', totalDays: 15 })
+  assert.deepEqual(getBudgetRangeForPeriod('15_days', '2026-09-10', '', '', 'fortnightly-2'), { startDate: '2026-09-16', endDate: '2026-09-30', totalDays: 15 })
 })
-
 test('supports custom date ranges', () => {
   const range = getBudgetRangeForPeriod('custom', '2026-09-10', '2026-09-12', '2026-09-20')
   assert.deepEqual(range, { startDate: '2026-09-12', endDate: '2026-09-20', totalDays: 9 })
