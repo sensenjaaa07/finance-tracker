@@ -1,4 +1,4 @@
-import '../src/assets/styles/App.css'
+import './assets/styles/App.css'
 import Navigation from './components/Navigation.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Budget from './pages/Budget.jsx'
@@ -27,7 +27,13 @@ function App() {
   const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(EMPTY_DATA.netWorth)
   const [transfers, setTransfers] = useState(EMPTY_DATA.transfers)
   const [budgets, setBudgets] = useState(EMPTY_DATA.budgets)
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    try {
+      return localStorage.getItem('finance-tracker-selected-month') || new Date().toISOString().slice(0, 7)
+    } catch {
+      return new Date().toISOString().slice(0, 7)
+    }
+  })
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
 
@@ -73,7 +79,7 @@ function App() {
   const filteredExpenseEntries = filterExpensesByDate(expenseEntries, monthStart, monthEnd)
   const filteredIncomeEntries = filterExpensesByDate(incomeEntries, monthStart, monthEnd)
   const monthlyIncomeTotal = filteredIncomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-  const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) + netWorthEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
 
   const changeAccountBalance = (accountId, delta) => {
     let changed = false
@@ -164,7 +170,49 @@ function App() {
   }
 
   function updateExpenseEntry(expenseId, updatedEntry) {
-    setExpenseEntries(previous => previous.map(entry => entry.id === expenseId ? { ...entry, ...updatedEntry } : entry))
+    const expenseToUpdate = expenseEntries.find(entry => entry.id === expenseId)
+    if (!expenseToUpdate) return false
+
+    const nextAmount = Number(updatedEntry.amount)
+    const nextAccountId = updatedEntry.accountId || ''
+    if (!nextAccountId || !Number.isFinite(nextAmount) || nextAmount <= 0) {
+      setToastMessage('Please enter a valid expense amount and account.')
+      return false
+    }
+
+    const oldAmount = Number(expenseToUpdate.amount ?? 0)
+    const oldAccountId = expenseToUpdate.accountId || ''
+    const targetAccount = netWorthEntries.find(entry => entry.id === nextAccountId)
+    const oldAccount = oldAccountId ? netWorthEntries.find(entry => entry.id === oldAccountId) : null
+
+    if (!targetAccount) {
+      setToastMessage('The selected account no longer exists.')
+      return false
+    }
+
+    if (oldAccountId === nextAccountId) {
+      const difference = nextAmount - oldAmount
+      if (difference > 0 && Number(targetAccount.amount ?? 0) < difference) {
+        setToastMessage(`Insufficient balance in ${targetAccount.name} for this expense change.`)
+        return false
+      }
+      changeAccountBalance(nextAccountId, -difference)
+    } else {
+      if (oldAccountId && !oldAccount) {
+        setToastMessage('The original expense account no longer exists, so this expense cannot be moved safely.')
+        return false
+      }
+      if (Number(targetAccount.amount ?? 0) < nextAmount) {
+        setToastMessage(`Insufficient balance in ${targetAccount.name} for this expense change.`)
+        return false
+      }
+      if (oldAccountId && oldAmount > 0) changeAccountBalance(oldAccountId, oldAmount)
+      changeAccountBalance(nextAccountId, -nextAmount)
+    }
+
+    setExpenseEntries(previous => previous.map(entry => entry.id === expenseId ? { ...entry, ...updatedEntry, amount: nextAmount, accountId: nextAccountId } : entry))
+    setToastMessage(`Expense updated. ${targetAccount.name} now reflects the new amount.`)
+    return true
   }
 
   function deleteExpenseEntry(expenseId) {
@@ -179,6 +227,31 @@ function App() {
         setToastMessage(`₱${amount.toFixed(2)} was returned to ${account.name}.`)
       } else setToastMessage('Transaction deleted successfully.')
     } else setToastMessage('Transaction deleted successfully.')
+    return true
+  }
+
+  function deleteTransfer(transferId) {
+    const transferToDelete = transfers.find(entry => entry.id === transferId)
+    if (!transferToDelete) return false
+
+    const amount = Number(transferToDelete.amount ?? 0)
+    const sourceAccount = netWorthEntries.find(entry => entry.id === transferToDelete.fromAccountId)
+    const destinationAccount = netWorthEntries.find(entry => entry.id === transferToDelete.toAccountId)
+
+    if (!sourceAccount || !destinationAccount) {
+      setToastMessage('This transfer cannot be reversed because one of its accounts no longer exists.')
+      return false
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0 || Number(destinationAccount.amount ?? 0) < amount) {
+      setToastMessage(`Unable to reverse this transfer because ${destinationAccount.name} no longer has enough balance.`)
+      return false
+    }
+
+    changeAccountBalance(transferToDelete.fromAccountId, amount)
+    changeAccountBalance(transferToDelete.toAccountId, -amount)
+    setTransfers(previous => previous.filter(entry => entry.id !== transferId))
+    setToastMessage(`₱${amount.toFixed(2)} transfer reversed and removed.`)
     return true
   }
 
@@ -249,11 +322,21 @@ function App() {
   }
 
   function deleteNetWorthEntry(netWorthId) {
+    const hasExpenses = expenseEntries.some(entry => entry.accountId === netWorthId)
+    const hasIncome = incomeEntries.some(entry => entry.accountId === netWorthId)
+    const hasTransfers = transfers.some(entry => entry.fromAccountId === netWorthId || entry.toAccountId === netWorthId)
+
+    if (hasExpenses || hasIncome || hasTransfers) {
+      setToastMessage('This account has transaction history. Remove or move those transactions before deleting the account.')
+      return false
+    }
+
     setNetWorthEntriesByMonth(previous => {
       const next = { ...previous }
       Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== netWorthId) })
       return next
     })
+    setToastMessage('Account deleted successfully.')
     return true
   }
 
