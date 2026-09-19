@@ -135,7 +135,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
       <div className="dashboard-filter-bar">
         <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{selectedCategory === "all" ? "All categories" : selectedCategory}</strong></span></div>
         <div className="dashboard-filter-group dashboard-visibility-group"><span>Visible metrics</span><div className="dashboard-visibility-toggle-group">{orderedMetricButtons.map((metric) => <button key={metric.key} type="button" className={`metric-toggle ${visibleMetrics[metric.key] ? 'is-visible' : 'is-hidden'}`} onClick={() => toggleMetric(metric.key)}>{metric.label}</button>)}</div></div>
-        <div className="dashboard-filter-group dashboard-range-group"><label htmlFor="dashboard-range-filter">Range</label><select id="dashboard-range-filter" value={rangeKey} onChange={(event) => setRangeKey(event.target.value)}><option value="month">This month</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="12m">Last 12 months</option><option value="year">This year</option></select></div>
+        <div className="dashboard-filter-group dashboard-range-group"><label htmlFor="dashboard-range-filter">Analytics range</label><select id="dashboard-range-filter" value={rangeKey} onChange={(event) => setRangeKey(event.target.value)}><option value="month">This month</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="12m">Last 12 months</option><option value="year">This year</option></select></div>
       </div>
       <div className="dashboard-summary">{metricCards.filter((metric) => visibleMetrics[metric.key]).sort((a, b) => metricOrder.indexOf(a.key) - metricOrder.indexOf(b.key)).map((metric) => <div className="summary-card" key={metric.key}><p>{metric.label}</p><strong className={metric.negative ? 'amount-negative' : ''}>{metric.value}</strong></div>)}</div>
 
@@ -155,9 +155,45 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
         </>}
       </div>
 
-      <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Actual Expenses vs Forecast Expenses</h2></div><div className="chart-summary-inline"><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
+      <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Income vs Expenses & Forecast</h2></div><div className="chart-summary-inline"><span>Income</span><strong>{formatCurrency(totalIncome)}</strong><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
 
-      <div className="dashboard-section"><h2>{selectedCategory === 'all' ? 'Budget left by category' : selectedCategory === 'Uncategorized' ? 'Uncategorized expenses' : `${selectedCategoryLabel} breakdown`}</h2>{selectedCategory === 'Uncategorized' ? <div className="entry-list">{uncategorizedEntries.length === 0 ? <p className="empty-state">No uncategorized expenses found for this period.</p> : uncategorizedEntries.map((expense) => <div className="entry-list-item info-card" key={expense.id}><div className="info-card-header"><p className="info-card-label">Expense</p><span className="budget-card-badge">Uncategorized</span></div><h3>{expense.title}</h3><div className="budget-card-metrics"><div><span className="budget-card-label">Amount</span><p>{formatCurrency(Number(expense.amount ?? 0))}</p></div><div><span className="budget-card-label">Date</span><p>{new Date(expense.date).toLocaleDateString('en-PH')}</p></div></div></div>)}</div> : filteredCategories.length === 0 ? <p className="empty-state">Create a budget category to start tracking what is left.</p> : <div className="entry-list">{filteredCategories.map((category) => { const spent = visibleExpenses.filter((expense) => expense.category === category.name).reduce((total, expense) => total + expense.amount, 0); const remaining = category.amount - spent; const isSelected = selectedCategory === category.name; return <div className={`entry-list-item info-card ${isSelected ? 'is-selected' : ''}`} key={category.id} onClick={() => setSelectedCategory(category.name)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedCategory(category.name) } }}><div className="info-card-header"><p className="info-card-label">Category</p><span className="budget-card-badge">Open</span></div><h3>{category.name}</h3><div className="budget-card-metrics"><div><span className="budget-card-label">Left</span><p className={remaining < 0 ? 'amount-negative' : ''}>{formatCurrency(remaining)}</p></div><div><span className="budget-card-label">Spent</span><p>{formatCurrency(spent)} / {formatCurrency(category.amount)}</p></div></div></div> })}</div>}</div>
+      <div className="dashboard-section">
+        <h2>{selectedCategory === 'all' ? 'Budget left by category' : selectedCategory === 'Uncategorized' ? 'Uncategorized expenses' : `${selectedCategoryLabel} breakdown`}</h2>
+        {selectedCategory === 'Uncategorized'
+          ? <div className="entry-list">
+              {uncategorizedEntries.length === 0
+                ? <p className="empty-state">No uncategorized expenses found for this period.</p>
+                : uncategorizedEntries.map((expense) => (
+                    <div className="entry-list-item info-card" key={expense.id}>
+                      <div className="info-card-header"><p className="info-card-label">Expense</p><span className="budget-card-badge">Uncategorized</span></div>
+                      <h3>{expense.title}</h3>
+                      <div className="budget-card-metrics">
+                        <div><span className="budget-card-label">Amount</span><p>{formatCurrency(Number(expense.amount ?? 0))}</p></div>
+                        <div><span className="budget-card-label">Date</span><p>{new Date(expense.date).toLocaleDateString('en-PH')}</p></div>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          : filteredCategories.length === 0
+            ? <p className="empty-state">{selectedCategory === 'all' ? 'Create a budget category to start tracking what is left.' : `No budget category named ${selectedCategoryLabel} has been created yet.`}</p>
+            : <div className="entry-list">
+                {filteredCategories.map((category) => {
+                  const spent = visibleExpenses.filter((expense) => expense.category === category.name).reduce((total, expense) => total + expense.amount, 0)
+                  const remaining = category.amount - spent
+                  const isSelected = selectedCategory === category.name
+                  return (
+                    <div className={`entry-list-item info-card ${isSelected ? 'is-selected' : ''}`} key={category.id} onClick={() => setSelectedCategory(category.name)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedCategory(category.name) } }}>
+                      <div className="info-card-header"><p className="info-card-label">Category</p><span className="budget-card-badge">Open</span></div>
+                      <h3>{category.name}</h3>
+                      <div className="budget-card-metrics">
+                        <div><span className="budget-card-label">Left</span><p className={remaining < 0 ? 'amount-negative' : ''}>{formatCurrency(remaining)}</p></div>
+                        <div><span className="budget-card-label">Spent</span><p>{formatCurrency(spent)} / {formatCurrency(category.amount)}</p></div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>}
+      </div>
     </section>
   )
 }
