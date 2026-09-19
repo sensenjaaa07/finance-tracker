@@ -32,16 +32,6 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
     setDraftAmount('')
   }
 
-  const handleDelete = () => {
-    if (!onDeleteCategoryEntry || !editingCategory) {
-      return
-    }
-
-    onDeleteCategoryEntry(editingCategory.id)
-    setEditingCategory(null)
-    setDraftAmount('')
-  }
-
   const getSpent = (entry) => expenseEntries
     .filter((expense) => expense.category === entry.name)
     .reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
