@@ -63,7 +63,7 @@ const FinanceTrendChart = ({ data = [] }) => {
           <Line
             type="monotone"
             dataKey="forecastExpenses"
-            name="Forecast Expenses"
+            name="Estimated Forecast Expenses"
             stroke="#F59E0B"
             strokeWidth={2.5}
             strokeDasharray="6 6"
