@@ -226,3 +226,8 @@
 .edit-action-row {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+.entry-list-item .budget-card-button {
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
