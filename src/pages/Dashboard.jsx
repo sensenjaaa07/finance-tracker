@@ -2,7 +2,7 @@ import '../assets/styles/Dashboard.css'
 import Header from '../components/Header'
 import FinanceTrendChart from '../components/charts/FinanceTrendChart.jsx'
 import CategoryBreakdownChart from '../components/charts/CategoryBreakdownChart.jsx'
-import { buildCategoryBreakdownData, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
+import { buildCategoryBreakdownData, buildMonthKeysForRange, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
 import filterExpensesByDate from '../services/filterExpensesByDate.js'
 import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
 import { useEffect, useMemo, useState } from 'react'
@@ -52,13 +52,15 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
 
   const rangeFilteredExpenses = useMemo(() => {
     if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allExpenseEntries.filter((entry) => matchesRange(entry.date))
-    return filterExpensesByDate(allExpenseEntries, monthStart, monthEnd)
-  }, [allExpenseEntries, monthEnd, monthStart, rangeKey, selectedMonth])
+    const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
+    return allExpenseEntries.filter((entry) => monthKeys.includes(monthKeyFromDate(entry.date)))
+  }, [allExpenseEntries, rangeKey, selectedMonth])
 
   const rangeFilteredIncome = useMemo(() => {
     if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allIncomeEntries.filter((entry) => matchesRange(entry.date))
-    return filterExpensesByDate(allIncomeEntries, monthStart, monthEnd)
-  }, [allIncomeEntries, monthEnd, monthStart, rangeKey, selectedMonth])
+    const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
+    return allIncomeEntries.filter((entry) => monthKeys.includes(monthKeyFromDate(entry.date)))
+  }, [allIncomeEntries, rangeKey, selectedMonth])
 
   const visibleExpenses = rangeFilteredExpenses
   const visibleIncome = rangeFilteredIncome
@@ -156,7 +158,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
         </>}
       </div>
 
-      <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Income vs Expenses & Forecast</h2></div><div className="chart-summary-inline"><span>Income</span><strong>{formatCurrency(analyticsIncomeTotal)}</strong><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
+      <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Income vs Expenses & Forecast</h2></div><div className="chart-summary-inline"><span>Income</span><strong>{formatCurrency(analyticsIncomeTotal)}</strong><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
 
       <div className="dashboard-section">
         <h2>{selectedCategory === 'all' ? 'Budget left by category' : selectedCategory === 'Uncategorized' ? 'Uncategorized expenses' : `${selectedCategoryLabel} breakdown`}</h2>
