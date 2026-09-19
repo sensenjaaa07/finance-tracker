@@ -4,7 +4,7 @@ import FinanceTrendChart from '../components/charts/FinanceTrendChart.jsx'
 import CategoryBreakdownChart from '../components/charts/CategoryBreakdownChart.jsx'
 import { buildCategoryBreakdownData, buildMonthKeysForRange, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
 import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseEntries, allIncomeEntries = incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
   const [selectedCategory, setSelectedCategory] = useState(() => {
@@ -35,7 +35,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     }
   }, [categoryEntries, selectedCategory])
 
-  const matchesRange = (dateValue) => {
+  const matchesRange = useCallback((dateValue) => {
     if (!selectedMonth || !dateValue) return false
     const date = new Date(dateValue)
     if (Number.isNaN(date.getTime()) || monthKeyFromDate(dateValue) !== selectedMonth) return false
@@ -44,21 +44,20 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     if (rangeKey === 'fortnightly-1') return day >= 1 && day <= 15
     if (rangeKey === 'fortnightly-2') return day >= 16
     return true
-  }
+  }, [rangeKey, selectedMonth])
 
   const rangeFilteredExpenses = useMemo(() => {
     if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allExpenseEntries.filter((entry) => matchesRange(entry.date))
     const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
     return allExpenseEntries.filter((entry) => monthKeys.includes(monthKeyFromDate(entry.date)))
-  }, [allExpenseEntries, rangeKey, selectedMonth])
+  }, [allExpenseEntries, rangeKey, selectedMonth, matchesRange])
 
   const rangeFilteredIncome = useMemo(() => {
     if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allIncomeEntries.filter((entry) => matchesRange(entry.date))
     const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
     return allIncomeEntries.filter((entry) => monthKeys.includes(monthKeyFromDate(entry.date)))
-  }, [allIncomeEntries, rangeKey, selectedMonth])
+  }, [allIncomeEntries, rangeKey, selectedMonth, matchesRange])
 
-  const visibleExpenses = rangeFilteredExpenses
   const visibleIncome = rangeFilteredIncome
   const uncategorizedEntries = expenseEntries.filter((expense) => !expense.category || expense.category === 'Uncategorized')
   const filteredCategories = selectedCategory === 'all' ? categoryEntries : selectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === selectedCategory)
@@ -122,7 +121,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     }
     const range = budgetPeriod === 'custom' ? getBudgetRangeForPeriod('custom', new Date(), customStartDate, customEndDate) : getBudgetRangeForPeriod(budgetPeriod)
     return calculateCategoryBudgetMetrics({ category: budgetCategory, amount, periodType: budgetPeriod, startDate: budgetPeriod === 'custom' ? range.startDate : undefined, endDate: budgetPeriod === 'custom' ? range.endDate : undefined, expenses: allExpenseEntries })
-  }, [allExpenseEntries, budgetCategory, budgetCycle, budgetPeriod, budgets, customEndDate, customStartDate, selectedMonth])
+  }, [allExpenseEntries, budgetCategory, budgetCycle, budgetPeriod, budgets, customEndDate, customStartDate])
 
   const budgetPeriodLabel = budgetMetrics?.totalDays ? `${budgetMetrics.totalDays} days` : 'Custom range'
   const formatBudgetDate = (dateValue) => dateValue ? new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
