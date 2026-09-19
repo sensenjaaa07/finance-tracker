@@ -118,3 +118,14 @@
   .transfer-modal-title-group > p:last-child { font-size: 0.85rem; }
   .transfer-modal-actions { grid-template-columns: 1fr; }
 }
+
+
+.budget-card-reallocation-row { display: flex; justify-content: flex-end; margin-top: auto; }
+.budget-card-button-reallocate { max-width: none; border-color: rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.07); color: var(--color-primary-dark); }
+.budget-card-button-reallocate:hover { background: rgba(16, 185, 129, 0.12); }
+.budget-reallocation-modal { width: min(680px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 32px)); overflow-y: auto; }
+.budget-reallocation-eyebrow { margin: 0 0 0.25rem; color: var(--color-primary-dark); font-size: 0.7rem; font-weight: var(--font-weight-bold); letter-spacing: 0.08em; text-transform: uppercase; }
+.budget-reallocation-description { margin: 0 0 1.25rem; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; }
+.budget-reallocation-fields { display: grid; gap: 1rem; }
+.budget-reallocation-helper { min-height: 1rem; color: var(--text-muted); font-size: 0.76rem; line-height: 1.35; }
+.budget-reallocation-preview { margin: 1.25rem 0; padding: 0.9rem 1rem; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.05); color: var(--text-secondary); font-size: 0.85rem; line-height: 1.45; }
