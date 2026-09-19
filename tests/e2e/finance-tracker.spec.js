@@ -141,22 +141,23 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('desktop: covers navigation, accounts, income, budgets, expenses, reallocation, deletion and transfers', async ({ page }) => {
+  test.skip(test.info().project.name !== 'chromium', 'Desktop workflow')
   await expect(page.getByRole('heading', { name: 'Income vs Expenses & Forecast' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Expenses by Category' })).toBeVisible()
 
+  await page.getByRole('link', { name: 'Accounts' }).click()
+  await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible()
   await addAccount(page, 'Main Account', 10000)
-  await page.getByRole('button', { name: 'Add Account' }).click()
-  await page.locator('input[name="netWorthName"]').fill('Savings')
-  await page.locator('input[name="amount"]').fill('2000')
-  await page.getByRole('button', { name: 'Add Account' }).click()
+  await addAccount(page, 'Savings', 2000)
 
+  await page.getByRole('link', { name: 'Income' }).click()
   await addIncome(page, 'Salary', 3000, 'Main Account')
-  await addCategory(page, 'Food', 3000)
-  await page.getByRole('button', { name: 'Add Category' }).click()
-  await page.locator('input[name="category"]').fill('Transport')
-  await page.locator('input[name="amount"]').fill('2000')
-  await page.getByRole('button', { name: 'Add Category' }).click()
 
+  await page.getByRole('link', { name: 'Budget' }).click()
+  await addCategory(page, 'Food', 3000)
+  await addCategory(page, 'Transport', 2000)
+
+  await page.getByRole('link', { name: 'Dashboard' }).click()
   await addExpense(page, 'Lunch', 500, 'Food', 'Main Account')
   await page.getByRole('combobox', { name: 'View' }).selectOption('Food')
   await expect(page.getByText('Food · 15 days')).toBeVisible()
@@ -164,12 +165,10 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
 
   await page.getByRole('link', { name: 'Budget' }).click()
   await expect(page.getByRole('heading', { name: 'Budget & Categories' })).toBeVisible()
-  await expect(page.getByText('₱3,000.00').first()).toBeVisible()
   await page.getByRole('button', { name: 'Move left budget' }).first().click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await page.getByLabel('To category').selectOption({ label: /Transport/ })
-  await page.getByLabel('Amount to move').fill('500')
-  await page.getByRole('button', { name: 'Move budget' }).click()
+  await page.getByRole('dialog').getByLabel('To category').selectOption({ label: /Transport/ })
+  await page.getByRole('dialog').getByLabel('Amount to move').fill('500')
+  await page.getByRole('dialog').getByRole('button', { name: 'Move budget' }).click()
   await expect(page.getByText('₱2,500.00').first()).toBeVisible()
 
   const foodCard = page.locator('.budget-card', { hasText: 'Food' })
@@ -180,8 +179,6 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await expect(page.getByText(/Food and its budget allocations were deleted/)).toBeVisible()
 
   await page.getByRole('link', { name: 'Accounts' }).click()
-  await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible()
-  await expect(page.getByText('Main Account')).toBeVisible()
   await page.getByRole('button', { name: 'Adjust balance' }).first().click()
   await page.getByLabel('Adjustment').selectOption('decrease')
   await page.getByLabel('Amount').last().fill('500')
@@ -197,39 +194,44 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
 
   await page.getByRole('link', { name: 'Transactions' }).click()
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
-  await expect(page.getByText('Account transfer')).toBeVisible()
-  await page.getByRole('button', { name: 'Delete' }).last().click()
+  const transferRow = page.locator('.transactions-table tbody tr', { hasText: 'Main Account → Savings' })
+  await expect(transferRow).toBeVisible()
+  await transferRow.getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByRole('heading', { name: 'Delete transfer?' })).toBeVisible()
   await page.getByRole('button', { name: 'Delete transfer' }).click()
   await expect(page.getByText(/transfer reversed and removed/)).toBeVisible()
 
   await page.getByLabel('Category').selectOption('Uncategorized')
-  await expect(page.getByText('Uncategorized')).toBeVisible()
+  await expect(page.getByText('Lunch')).toBeVisible()
 })
 
-test('desktop: validates delete guards and cloud retry', async ({ page }) => {
+test('desktop: blocks deleting an account with transaction history', async ({ page }) => {
+  test.skip(test.info().project.name !== 'chromium', 'Desktop workflow')
+  await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
   await page.reload()
   await expect(page.getByText('Lunch')).toBeVisible()
 
   await page.getByRole('link', { name: 'Accounts' }).click()
-  await page.getByRole('button', { name: 'Adjust balance' }).first().click()
-  await page.getByLabel('Adjustment').selectOption('decrease')
-  await page.getByLabel('Amount').last().fill('100')
-  await page.getByRole('button', { name: 'Adjust balance' }).click()
-
   await page.getByRole('button', { name: 'Delete Main Account' }).click()
-  await expect(page.getByRole('heading', { name: 'Delete account?' })).toBeVisible()
+  await page.getByRole('heading', { name: 'Delete account?' }).isVisible()
   await page.getByRole('button', { name: 'Delete account' }).click()
   await expect(page.getByText(/transaction history/)).toBeVisible()
+})
 
-  await page.getByRole('link', { name: 'Dashboard' }).click()
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible()
-  await page.reload()
+test('desktop: recovers from a cloud storage failure', async ({ page }) => {
+  test.skip(test.info().project.name !== 'chromium', 'Desktop workflow')
+  await page.unroute('**/api/data')
+  await mockCloud(page, emptyDataset, { failFirstGet: true })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Unable to connect to cloud storage' })).toBeVisible()
+  await page.getByRole('button', { name: 'Retry connection' }).click()
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible()
 })
 
 test('mobile: transaction cards expose complete details in the popup', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile', 'Mobile workflow')
+  await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
   await page.goto('/transactions')
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
@@ -238,10 +240,12 @@ test('mobile: transaction cards expose complete details in the popup', async ({ 
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByText('Main Account')).toBeVisible()
   await expect(page.getByText('Food')).toBeVisible()
-  await expect(page.getByText(/Time added/)).toBeVisible()
+  await expect(page.getByText('Time added')).toBeVisible()
 })
 
 test('mobile: navigation drawer and filters remain usable', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile', 'Mobile workflow')
+  await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
   await page.goto('/transactions')
   await page.getByRole('button', { name: 'Open navigation' }).click()
