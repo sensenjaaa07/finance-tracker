@@ -106,7 +106,7 @@ export default function useCloudSync(data, setters) {
     saveTimer.current = setTimeout(async () => {
       try {
         setSyncStatus('saving')
-        const result = await saveCloudData(dataRef.current)
+        await saveCloudData(dataRef.current)
         setCloudError('')
         setSyncStatus('connected')
       } catch (error) {
