@@ -110,3 +110,14 @@ nav ul li a.active { background-color:#dcfce7; color:var(--color-primary-dark); 
     .nav-title { font-size:var(--font-size-md); }
     nav ul li a { padding-inline:var(--spacing-sm); }
 }
+
+
+nav ul li a svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+.mobile-nav-toggle svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
