@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
@@ -18,7 +18,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
   const categoryOptions = ['Uncategorized', ...categoryEntries.map(category => category.name).filter(name => name !== 'Uncategorized')]
   const accountOptions = accounts.map(account => account.name)
 
-  const getAccountName = (expense) => accounts.find(account => account.id === expense.accountId)?.name || expense.account || 'Account not recorded'
+  const getAccountName = useCallback((expense) => accounts.find(account => account.id === expense.accountId)?.name || expense.account || 'Account not recorded', [accounts])
 
   const filteredExpenses = useMemo(() => expenseEntries.filter(expense => {
     if (typeFilter === 'transfer') return false
@@ -30,7 +30,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
       if (!`${expense.title} ${expense.category} ${accountName}`.toLowerCase().includes(query)) return false
     }
     return true
-  }), [expenseEntries, accounts, typeFilter, categoryFilter, accountFilter, searchFilter])
+  }), [expenseEntries, accounts, getAccountName, typeFilter, categoryFilter, accountFilter, searchFilter])
 
   const filteredTransfers = useMemo(() => transfers.filter(transfer => {
     if (typeFilter === 'expense') return false
