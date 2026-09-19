@@ -12,7 +12,6 @@ const emptyDataset = {
 
 const today = '2026-09-19'
 const seedMonth = '2026-09'
-const seedMonth = '2026-09'
 
 const seedDataset = {
   expenses: [
@@ -58,7 +57,7 @@ async function mockCloud(page, initialData = emptyDataset, options = {}) {
   let updatedAt = 1
   let failGetsRemaining = options.failFirstGet ? 2 : 0
 
-  await page.route('**/api/data', async (route) => {
+  await page.route('**/api/data*', async (route) => {
     if (route.request().method() === 'GET') {
       if (failGetsRemaining > 0) {
         failGetsRemaining -= 1
