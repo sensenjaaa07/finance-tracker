@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faXmark, faTrashCan, faPenToSquare, faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons'
+import { faXmark, faTrashCan, faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
