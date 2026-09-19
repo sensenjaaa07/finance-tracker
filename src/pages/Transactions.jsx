@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], transfers = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateExpenseEntry, onDeleteExpenseEntry }) => {
+const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], transfers = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateExpenseEntry, onDeleteExpenseEntry, onDeleteTransfer }) => {
   const [editingExpense, setEditingExpense] = useState(null)
   const [pendingDeleteExpense, setPendingDeleteExpense] = useState(null)
+  const [pendingDeleteTransfer, setPendingDeleteTransfer] = useState(null)
   const [selectedTransaction, setSelectedTransaction] = useState(null)
   const [draft, setDraft] = useState({ title: '', category: '', amount: '', date: '', accountId: '' })
   const [typeFilter, setTypeFilter] = useState('all')
@@ -14,7 +15,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
   const [sortField, setSortField] = useState('createdAt')
   const [sortDirection, setSortDirection] = useState('desc')
 
-  const categoryOptions = categoryEntries.map(category => category.name)
+  const categoryOptions = ['Uncategorized', ...categoryEntries.map(category => category.name).filter(name => name !== 'Uncategorized')]
   const accountOptions = accounts.map(account => account.name)
 
   const getAccountName = (expense) => accounts.find(account => account.id === expense.accountId)?.name || expense.account || 'Account not recorded'
@@ -207,25 +208,25 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
                 const accountName = getAccountName(entry)
                 return <tr key={`expense-${entry.id}`}><td className="transaction-date">{entry.date.toLocaleDateString()}</td><td className="transaction-date">{formatAddedTime(entry.createdAt ?? entry.date)}</td><td><span className="transaction-type transaction-type-expense">Expense</span></td><td className="transaction-title-cell">{entry.title}<small>{entry.category}</small></td><td className="transaction-account-cell">{accountName}</td><td className="transactions-amount transaction-expense-amount">-₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(entry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(entry)}>Delete</button></div></td></tr>
               }
-              return <tr key={`transfer-${entry.id}`}><td className="transaction-date">{new Date(entry.date).toLocaleDateString()}</td><td className="transaction-date">{formatAddedTime(entry.createdAt ?? entry.date)}</td><td><span className="transaction-type transaction-type-transfer">Transfer</span></td><td className="transaction-title-cell">{entry.fromAccount} → {entry.toAccount}<small>Account transfer</small></td><td className="transaction-account-cell">{entry.fromAccount} → {entry.toAccount}</td><td className="transactions-amount transaction-transfer-amount">₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><span className="transaction-logged">Logged</span></td></tr>
+              return <tr key={`transfer-${entry.id}`}><td className="transaction-date">{new Date(entry.date).toLocaleDateString()}</td><td className="transaction-date">{formatAddedTime(entry.createdAt ?? entry.date)}</td><td><span className="transaction-type transaction-type-transfer">Transfer</span></td><td className="transaction-title-cell">{entry.fromAccount} → {entry.toAccount}<small>Account transfer</small></td><td className="transaction-account-cell">{entry.fromAccount} → {entry.toAccount}</td><td className="transactions-amount transaction-transfer-amount">₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><span className="transaction-logged">Logged</span><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteTransfer(entry)}>Delete</button></div></td></tr>
             })}
           </tbody>
         </table>}
       </div>
 
       <div className="transactions-mobile-list">
-        {transactionCount === 0 ? <p className="empty-state">{hasFilters ? 'No transactions match your filters.' : 'No transactions have been recorded yet.'}</p> : <>
-          {filteredExpenses.map(expenseEntry => <button key={`mobile-expense-${expenseEntry.id}`} type="button" className="transaction-mobile-card" onClick={() => openExpenseDetails(expenseEntry)}>
-            <div className="transaction-mobile-card-header"><div className="transaction-mobile-card-title"><strong>{expenseEntry.title}</strong><small>{expenseEntry.category}</small></div><span className="transaction-mobile-card-amount expense">-₱{Number(expenseEntry.amount).toFixed(2)}</span></div>
-            <div className="transaction-mobile-card-summary"><div><span>Date</span><strong>{expenseEntry.date.toLocaleDateString()}</strong></div><div><span>Account</span><strong>{getAccountName(expenseEntry)}</strong></div></div>
-            <div className="transaction-mobile-card-footer"><span>Expense</span><span className="transaction-mobile-view">View details →</span></div>
-          </button>)}
-          {filteredTransfers.map(transfer => <button key={`mobile-transfer-${transfer.id}`} type="button" className="transaction-mobile-card" onClick={() => openTransferDetails(transfer)}>
-            <div className="transaction-mobile-card-header"><div className="transaction-mobile-card-title"><strong>{transfer.fromAccount} → {transfer.toAccount}</strong><small>Account transfer</small></div><span className="transaction-mobile-card-amount transfer">₱{Number(transfer.amount).toFixed(2)}</span></div>
-            <div className="transaction-mobile-card-summary"><div><span>Date</span><strong>{new Date(transfer.date).toLocaleDateString()}</strong></div><div><span>From → To</span><strong>{transfer.fromAccount} → {transfer.toAccount}</strong></div></div>
-            <div className="transaction-mobile-card-footer"><span>Transfer</span><span className="transaction-mobile-view">View details →</span></div>
-          </button>)}
-        </>}
+        {transactionCount === 0 ? <p className="empty-state">{hasFilters ? 'No transactions match your filters.' : 'No transactions have been recorded yet.'}</p> : sortedTransactions.map(({ type, entry }) => type === 'expense'
+          ? <button key={`mobile-expense-${entry.id}`} type="button" className="transaction-mobile-card" onClick={() => openExpenseDetails(entry)}>
+              <div className="transaction-mobile-card-header"><div className="transaction-mobile-card-title"><strong>{entry.title}</strong><small>{entry.category}</small></div><span className="transaction-mobile-card-amount expense">-₱{Number(entry.amount).toFixed(2)}</span></div>
+              <div className="transaction-mobile-card-summary"><div><span>Date</span><strong>{entry.date.toLocaleDateString()}</strong></div><div><span>Time added</span><strong>{formatAddedTime(entry.createdAt ?? entry.date)}</strong></div><div><span>Account</span><strong>{getAccountName(entry)}</strong></div></div>
+              <div className="transaction-mobile-card-footer"><span>Expense</span><span className="transaction-mobile-view">View details →</span></div>
+            </button>
+          : <button key={`mobile-transfer-${entry.id}`} type="button" className="transaction-mobile-card" onClick={() => openTransferDetails(entry)}>
+              <div className="transaction-mobile-card-header"><div className="transaction-mobile-card-title"><strong>{entry.fromAccount} → {entry.toAccount}</strong><small>Account transfer</small></div><span className="transaction-mobile-card-amount transfer">₱{Number(entry.amount).toFixed(2)}</span></div>
+              <div className="transaction-mobile-card-summary"><div><span>Date</span><strong>{new Date(entry.date).toLocaleDateString()}</strong></div><div><span>Time added</span><strong>{formatAddedTime(entry.createdAt ?? entry.date)}</strong></div><div><span>From → To</span><strong>{entry.fromAccount} → {entry.toAccount}</strong></div></div>
+              <div className="transaction-mobile-card-footer"><span>Transfer</span><span className="transaction-mobile-view">View details →</span></div>
+            </button>
+        )}
       </div>
 
       {selectedTransaction && selectedEntry && <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="transaction-details-title" onClick={() => setSelectedTransaction(null)}><div className="transaction-details-card" onClick={event => event.stopPropagation()}>
@@ -245,10 +246,14 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
           <div className="transaction-detail-item"><span>To account</span><strong>{selectedEntry.toAccount}</strong></div>
           <div className="transaction-detail-item full"><span>Amount</span><strong className="transaction-detail-amount transfer">₱{Number(selectedEntry.amount).toFixed(2)}</strong></div>
         </div>}
-        {selectedIsExpense && <div className="transaction-details-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(selectedEntry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(selectedEntry)}>Delete</button></div>}
+        {selectedIsExpense ? <div className="transaction-details-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(selectedEntry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(selectedEntry)}>Delete</button></div> : <div className="transaction-details-actions"><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteTransfer(selectedEntry)}>Delete transfer</button></div>}
       </div></div>}
 
       {editingExpense && <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-transaction-title"><div className="add-form edit-form"><div className="add-form-header"><h3 id="edit-transaction-title">Edit expense</h3><button className="add-form-close" type="button" onClick={() => setEditingExpense(null)} aria-label="Close edit form">&times;</button></div><div className="add-form-fields"><label className="add-form-label" htmlFor="transaction-edit-title">Title</label><input id="transaction-edit-title" value={draft.title} onChange={event => setDraft(previous => ({ ...previous, title: event.target.value }))} /><label className="add-form-label" htmlFor="transaction-edit-category">Category</label><select id="transaction-edit-category" value={draft.category} onChange={event => setDraft(previous => ({ ...previous, category: event.target.value }))}><option value="">Select a category</option>{categoryOptions.map(name => <option key={name} value={name}>{name}</option>)}</select><label className="add-form-label" htmlFor="transaction-edit-account">Deduct from account</label><select id="transaction-edit-account" value={draft.accountId} onChange={event => setDraft(previous => ({ ...previous, accountId: event.target.value }))}><option value="">Select an account</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}</select><div className="edit-form-grid"><div><label className="add-form-label" htmlFor="transaction-edit-amount">Amount</label><input id="transaction-edit-amount" type="number" min="0.01" step="0.01" value={draft.amount} onChange={event => setDraft(previous => ({ ...previous, amount: event.target.value }))} /></div><div><label className="add-form-label" htmlFor="transaction-edit-date">Date</label><input id="transaction-edit-date" type="date" value={draft.date} onChange={event => setDraft(previous => ({ ...previous, date: event.target.value }))} /></div></div><div className="budget-card-actions single-action-row"><button type="button" className="budget-card-button budget-card-button-save" onClick={handleSave}>Save</button></div></div></div></div>}
+      {pendingDeleteTransfer && <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-transfer-title"><div className="add-form edit-form"><div className="add-form-header"><h3 id="delete-transfer-title">Delete transfer?</h3><button className="add-form-close" type="button" onClick={() => setPendingDeleteTransfer(null)} aria-label="Close transfer deletion confirmation">&times;</button></div>
+        <p className="delete-confirmation-text">This will reverse ₱{Number(pendingDeleteTransfer.amount ?? 0).toFixed(2)} from {pendingDeleteTransfer.toAccount} and return it to {pendingDeleteTransfer.fromAccount}.</p>
+        <div className="budget-card-actions edit-action-row"><button type="button" className="budget-card-button budget-card-button-cancel" onClick={() => setPendingDeleteTransfer(null)}>Cancel</button><button type="button" className="budget-card-button budget-card-button-delete" onClick={() => { if (onDeleteTransfer?.(pendingDeleteTransfer.id)) { setPendingDeleteTransfer(null); setSelectedTransaction(null) } }}>Delete transfer</button></div>
+      </div></div>}
       {pendingDeleteExpense && <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-expense-title"><div className="add-form edit-form"><div className="add-form-header"><h3 id="delete-expense-title">Delete expense?</h3><button className="add-form-close" type="button" onClick={() => setPendingDeleteExpense(null)} aria-label="Close delete confirmation">&times;</button></div><p className="delete-confirmation-text">This will remove {pendingDeleteExpense.title} from the selected period.</p><div className="budget-card-actions single-action-row"><button type="button" className="budget-card-button budget-card-button-delete" onClick={confirmDeleteExpense}>Delete</button></div></div></div>}
     </div>
   )
