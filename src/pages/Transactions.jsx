@@ -30,7 +30,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
       if (!`${expense.title} ${expense.category} ${accountName}`.toLowerCase().includes(query)) return false
     }
     return true
-  }), [expenseEntries, accounts, getAccountName, typeFilter, categoryFilter, accountFilter, searchFilter])
+  }), [expenseEntries, getAccountName, typeFilter, categoryFilter, accountFilter, searchFilter])
 
   const filteredTransfers = useMemo(() => transfers.filter(transfer => {
     if (typeFilter === 'expense') return false
@@ -57,7 +57,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
       else if (sortField === 'account') comparison = a.account.localeCompare(b.account)
       return sortDirection === 'asc' ? comparison : -comparison
     })
-  }, [filteredExpenses, filteredTransfers, sortDirection, sortField, accounts])
+  }, [filteredExpenses, filteredTransfers, sortDirection, sortField, getAccountName])
 
   const handleSort = (field) => {
     if (sortField === field) setSortDirection(previous => previous === 'asc' ? 'desc' : 'asc')
