@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node --test src/services/budgetCalculations.test.js src/services/filterExpensesByDate.test.js src/services/createIncomeFromForm.test.js",
     "prebuild": "chmod +x node_modules/.bin/vite",
     "build": "vite build",
     "lint": "eslint .",
