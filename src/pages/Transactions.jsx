@@ -22,7 +22,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
 
   const filteredExpenses = useMemo(() => expenseEntries.filter(expense => {
     if (typeFilter === 'transfer') return false
-    if (categoryFilter !== 'all' && expense.category !== categoryFilter) return false
+    if (categoryFilter !== 'all' && (expense.category || 'Uncategorized') !== categoryFilter) return false
     const accountName = getAccountName(expense)
     if (accountFilter !== 'all' && accountName !== accountFilter) return false
     if (searchFilter.trim()) {
@@ -86,7 +86,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
     setEditingExpense(expenseEntry)
     setDraft({
       title: expenseEntry.title,
-      category: expenseEntry.category,
+      category: expenseEntry.category || 'Uncategorized',
       amount: String(expenseEntry.amount),
       date: expenseEntry.date.toISOString().slice(0, 10),
       accountId: expenseEntry.accountId || ''
@@ -98,15 +98,15 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
     const nextAmount = Number(draft.amount)
     const nextDate = new Date(draft.date)
     if (!draft.title.trim() || !draft.category.trim() || !draft.accountId || !Number.isFinite(nextAmount) || nextAmount <= 0 || Number.isNaN(nextDate.getTime())) return
-    onUpdateExpenseEntry(editingExpense.id, { title: draft.title.trim(), category: draft.category.trim(), amount: nextAmount, date: nextDate, accountId: draft.accountId })
-    setEditingExpense(null)
+    if (onUpdateExpenseEntry(editingExpense.id, { title: draft.title.trim(), category: draft.category.trim(), amount: nextAmount, date: nextDate, accountId: draft.accountId })) setEditingExpense(null)
   }
 
   const confirmDeleteExpense = () => {
     if (!onDeleteExpenseEntry || !pendingDeleteExpense) return
-    onDeleteExpenseEntry(pendingDeleteExpense.id)
-    setPendingDeleteExpense(null)
-    setSelectedTransaction(null)
+    if (onDeleteExpenseEntry(pendingDeleteExpense.id)) {
+      setPendingDeleteExpense(null)
+      setSelectedTransaction(null)
+    }
   }
 
   const openExpenseDetails = (expenseEntry) => setSelectedTransaction({ type: 'expense', entry: expenseEntry })
@@ -206,7 +206,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
             {sortedTransactions.map(({ type, entry }) => {
               if (type === 'expense') {
                 const accountName = getAccountName(entry)
-                return <tr key={`expense-${entry.id}`}><td className="transaction-date">{entry.date.toLocaleDateString()}</td><td className="transaction-date">{formatAddedTime(entry.createdAt ?? entry.date)}</td><td><span className="transaction-type transaction-type-expense">Expense</span></td><td className="transaction-title-cell">{entry.title}<small>{entry.category}</small></td><td className="transaction-account-cell">{accountName}</td><td className="transactions-amount transaction-expense-amount">-₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(entry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(entry)}>Delete</button></div></td></tr>
+                return <tr key={`expense-${entry.id}`}><td className="transaction-date">{entry.date.toLocaleDateString()}</td><td className="transaction-date">{formatAddedTime(entry.createdAt ?? entry.date)}</td><td><span className="transaction-type transaction-type-expense">Expense</span></td><td className="transaction-title-cell">{entry.title}<small>{entry.category || 'Uncategorized'}</small></td><td className="transaction-account-cell">{accountName}</td><td className="transactions-amount transaction-expense-amount">-₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><button type="button" className="transaction-action-button" onClick={() => handleEditStart(entry)}>Edit</button><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteExpense(entry)}>Delete</button></div></td></tr>
               }
               return <tr key={`transfer-${entry.id}`}><td className="transaction-date">{new Date(entry.date).toLocaleDateString()}</td><td className="transaction-date">{formatAddedTime(entry.createdAt ?? entry.date)}</td><td><span className="transaction-type transaction-type-transfer">Transfer</span></td><td className="transaction-title-cell">{entry.fromAccount} → {entry.toAccount}<small>Account transfer</small></td><td className="transaction-account-cell">{entry.fromAccount} → {entry.toAccount}</td><td className="transactions-amount transaction-transfer-amount">₱{Number(entry.amount).toFixed(2)}</td><td className="transactions-actions"><div className="transaction-row-actions"><span className="transaction-logged">Logged</span><button type="button" className="transaction-action-button transaction-action-delete" onClick={() => setPendingDeleteTransfer(entry)}>Delete</button></div></td></tr>
             })}
@@ -235,7 +235,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
           <div className="transaction-detail-item full"><span>Description</span><strong>{selectedEntry.title}</strong></div>
           <div className="transaction-detail-item"><span>Date</span><strong>{selectedEntry.date.toLocaleDateString()}</strong></div>
           <div className="transaction-detail-item"><span>Type</span><strong>Expense</strong></div>
-          <div className="transaction-detail-item"><span>Category</span><strong>{selectedEntry.category}</strong></div>
+          <div className="transaction-detail-item"><span>Category</span><strong>{selectedEntry.category || 'Uncategorized'}</strong></div>
           <div className="transaction-detail-item"><span>Account</span><strong>{getAccountName(selectedEntry)}</strong></div>
           <div className="transaction-detail-item full"><span>Amount</span><strong className="transaction-detail-amount expense">-₱{Number(selectedEntry.amount).toFixed(2)}</strong></div>
         </div> : <div className="transaction-details-grid">
