@@ -3,7 +3,6 @@ import Header from '../components/Header'
 import FinanceTrendChart from '../components/charts/FinanceTrendChart.jsx'
 import CategoryBreakdownChart from '../components/charts/CategoryBreakdownChart.jsx'
 import { buildCategoryBreakdownData, buildMonthKeysForRange, buildTrendData, formatCurrency, monthKeyFromDate } from '../services/financeAnalytics.js'
-import filterExpensesByDate from '../services/filterExpensesByDate.js'
 import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -35,9 +34,6 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
       setSelectedCategory('all')
     }
   }, [categoryEntries, selectedCategory])
-
-  const monthStart = selectedMonth ? `${selectedMonth}-01` : ''
-  const monthEnd = selectedMonth ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0).toISOString().slice(0, 10) : ''
 
   const matchesRange = (dateValue) => {
     if (!selectedMonth || !dateValue) return false
