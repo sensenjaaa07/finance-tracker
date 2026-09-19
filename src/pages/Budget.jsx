@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXmark, faTrashCan, faPenToSquare, faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
@@ -124,9 +126,7 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
                       setPendingDeleteCategory(entry)
                     }}
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M9 3.75A1.25 1.25 0 0 1 10.25 2.5h3.5A1.25 1.25 0 0 1 15 3.75V4h2.25a.75.75 0 0 1 0 1.5H17v11.25A2.75 2.75 0 0 1 14.25 19.5h-4.5A2.75 2.75 0 0 1 7 16.75V5.5H5.75a.75.75 0 0 1 0-1.5H8v-.25Zm1.5.75h3V4h-3v.5Zm-2.25 2.25h7.5v10.75a1.25 1.25 0 0 1-1.25 1.25h-4.5a1.25 1.25 0 0 1-1.25-1.25V6.5Zm1.5 2.25a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Zm3.5 0a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Z" fill="currentColor" />
-                    </svg>
+                    <FontAwesomeIcon icon={faTrashCan} aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -169,7 +169,7 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
           <div className="add-form edit-form" aria-labelledby="edit-category-title">
             <div className="add-form-header">
               <h3 id="edit-category-title">Edit {editingCategory.name}</h3>
-              <button className="add-form-close" type="button" onClick={() => setEditingCategory(null)} aria-label="Close edit form">&times;</button>
+              <button className="add-form-close" type="button" onClick={() => setEditingCategory(null)} aria-label="Close edit form"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
             </div>
             <div className="add-form-fields">
               <label className="add-form-label" htmlFor="budget-edit-amount">Allocated Amount</label>
@@ -198,7 +198,7 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
                 <p className="budget-reallocation-eyebrow">Flexible budgeting</p>
                 <h3 id="reallocate-budget-title">Move budget between categories</h3>
               </div>
-              <button className="add-form-close" type="button" onClick={closeReallocation} aria-label="Close budget reallocation">×</button>
+              <button className="add-form-close" type="button" onClick={closeReallocation} aria-label="Close budget reallocation"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
             </div>
             <p className="budget-reallocation-description">Move unused budget from one category to another. If a category is over budget, use another category's remaining amount to cover it.</p>
             <div className="budget-reallocation-fields">
@@ -238,8 +238,8 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
                 : 'Choose a source, destination, and amount.'}
             </div>
             <div className="budget-card-actions edit-action-row">
-              <button type="button" className="budget-card-button budget-card-button-cancel" onClick={closeReallocation}>Cancel</button>
-              <button type="button" className="budget-card-button budget-card-button-save" onClick={handleReallocation} disabled={!reallocationSourceId || !reallocationTargetId || Number(reallocationAmount) <= 0 || Number(reallocationAmount) > selectedSourceRemaining}>Move budget</button>
+              <button type="button" className="budget-card-button budget-card-button-cancel" onClick={closeReallocation}><FontAwesomeIcon icon={faXmark} aria-hidden="true" />Cancel</button>
+              <button type="button" className="budget-card-button budget-card-button-save" onClick={handleReallocation} disabled={!reallocationSourceId || !reallocationTargetId || Number(reallocationAmount) <= 0 || Number(reallocationAmount) > selectedSourceRemaining}><FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />Move budget</button>
             </div>
           </div>
         </div>
@@ -250,11 +250,11 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
           <div className="add-form edit-form" aria-labelledby="delete-category-title">
             <div className="add-form-header">
               <h3 id="delete-category-title">Delete category?</h3>
-              <button className="add-form-close" type="button" onClick={() => setPendingDeleteCategory(null)} aria-label="Close delete confirmation">&times;</button>
+              <button className="add-form-close" type="button" onClick={() => setPendingDeleteCategory(null)} aria-label="Close delete confirmation"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
             </div>
             <p className="delete-confirmation-text">This permanently removes {pendingDeleteCategory.name} and all of its saved budget allocations. Existing expenses will be kept and moved to Uncategorized.</p>
             <div className="budget-card-actions single-action-row">
-              <button type="button" className="budget-card-button budget-card-button-delete" onClick={confirmDeleteCategory}>Delete category</button>
+              <button type="button" className="budget-card-button budget-card-button-delete" onClick={confirmDeleteCategory}><FontAwesomeIcon icon={faTrashCan} aria-hidden="true" />Delete category</button>
             </div>
           </div>
         </div>
