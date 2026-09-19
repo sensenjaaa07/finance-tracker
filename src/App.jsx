@@ -16,7 +16,7 @@ import useCloudSync from './services/useCloudSync.js'
 import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
-const EMPTY_DATA = { expenses: [], income: [], categories: [], categoryEntries: {}, netWorth: {}, transfers: [], budgets: [] }
+const EMPTY_DATA = { expenses: [], income: [], categories: [], categoryEntries: {}, accounts: [], transfers: [], budgets: [] }
 
 function App() {
   const [activeForm, setActiveForm] = useState(null)
@@ -24,7 +24,7 @@ function App() {
   const [incomeEntries, setIncomeEntries] = useState(EMPTY_DATA.income)
   const [categoryDefinitions, setCategoryDefinitions] = useState(EMPTY_DATA.categories)
   const [categoryEntriesByMonth, setCategoryEntriesByMonth] = useState(EMPTY_DATA.categoryEntries)
-  const [netWorthEntriesByMonth, setNetWorthEntriesByMonth] = useState(EMPTY_DATA.netWorth)
+  const [accountEntries, setAccountEntries] = useState(EMPTY_DATA.accounts)
   const [transfers, setTransfers] = useState(EMPTY_DATA.transfers)
   const [budgets, setBudgets] = useState(EMPTY_DATA.budgets)
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -37,7 +37,7 @@ function App() {
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
 
-  const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, netWorth: netWorthEntriesByMonth, transfers, budgets }
+  const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, accounts: accountEntries, transfers, budgets }
 
   useEffect(() => {
     try {
@@ -46,7 +46,7 @@ function App() {
       // Ignore storage errors; the selected month remains in React state.
     }
   }, [selectedMonth])
-  const { cloudReady, syncStatus, cloudError, retryCloudSync } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setNetWorthEntriesByMonth, setTransfers, setBudgets })
+  const { cloudReady, syncStatus, cloudError, retryCloudSync } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setAccountEntries, setTransfers, setBudgets })
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) return ''
@@ -64,14 +64,7 @@ function App() {
     return matchingEntries.length > 0 ? { ...definition, amount: totalAmount } : { ...definition, amount: 0 }
   })
 
-  // Accounts are global and should not disappear when the budgeting period changes.
-  // Use the selected cycle's snapshot when available, then fall back to snapshots
-  // from other cycles so every existing account remains visible immediately.
-  const allAccountEntries = Object.values(netWorthEntriesByMonth).flatMap(entries => entries ?? [])
-  const currentAccountIds = new Set((netWorthEntriesByMonth[currentCycleKey] ?? []).map(entry => entry.id))
-  const netWorthEntries = allAccountEntries
-    .sort((a, b) => Number(currentAccountIds.has(b.id)) - Number(currentAccountIds.has(a.id)))
-    .reduce((entries, entry) => entries.some(existing => existing.id === entry.id) ? entries : [...entries, entry], [])
+  const netWorthEntries = accountEntries
 
   const getCycleRange = (monthValue, cycleMode) => {
     if (!monthValue) return { monthStart: '', monthEnd: '' }
@@ -90,21 +83,16 @@ function App() {
   const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
 
   const changeAccountBalance = (accountId, delta) => {
-    let changed = false
-    setNetWorthEntriesByMonth(previous => {
-      const next = { ...previous }
-      Object.keys(next).forEach(key => {
-        next[key] = (next[key] ?? []).map(entry => {
-          if (entry.id !== accountId) return entry
-          const nextAmount = Number(entry.amount ?? 0) + delta
-          if (nextAmount < 0) return entry
-          changed = true
-          return { ...entry, amount: nextAmount }
-        })
-      })
-      return next
-    })
-    return changed
+    const account = accountEntries.find((entry) => entry.id === accountId)
+    if (!account) return false
+
+    const nextAmount = Number(account.amount ?? 0) + Number(delta ?? 0)
+    if (!Number.isFinite(nextAmount) || nextAmount < 0) return false
+
+    setAccountEntries((previous) => previous.map((entry) => (
+      entry.id === accountId ? { ...entry, amount: nextAmount } : entry
+    )))
+    return true
   }
 
   function openAddForm(formType) { setActiveForm(formType) }
