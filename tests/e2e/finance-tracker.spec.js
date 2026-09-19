@@ -169,7 +169,7 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await page.getByRole('link', { name: 'Budget' }).click()
   await expect(page.getByRole('heading', { name: 'Budget & Categories' })).toBeVisible()
   await page.getByRole('button', { name: 'Move left budget' }).first().click()
-  await page.getByRole('dialog').getByLabel('To category').selectOption({ label: /Transport/ })
+  await page.getByRole('dialog').getByLabel('To category').selectOption({ label: 'Transport — ₱2000.00' })
   await page.getByRole('dialog').getByLabel('Amount to move').fill('500')
   await page.getByRole('dialog').getByRole('button', { name: 'Move budget' }).click()
   const foodCard = page.locator('.budget-card', { hasText: 'Food' })
