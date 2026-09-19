@@ -51,6 +51,7 @@ export default function useCloudSync(data, setters) {
   const [cloudReady, setCloudReady] = useState(false)
   const [syncStatus, setSyncStatus] = useState('loading')
   const [cloudError, setCloudError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const latestUpdatedAt = useRef(0)
   const skipNextSave = useRef(false)
   const saveTimer = useRef(null)
@@ -84,7 +85,7 @@ export default function useCloudSync(data, setters) {
     }
     loadFromRedis()
     return () => { cancelled = true }
-  }, [])
+  }, [loadAttempt])
 
   useEffect(() => {
     if (!cloudReady) return undefined
@@ -128,5 +129,12 @@ export default function useCloudSync(data, setters) {
     return () => clearInterval(intervalId)
   }, [cloudReady])
 
-  return { cloudReady, syncStatus, cloudError }
+  const retryCloudSync = () => {
+    setCloudReady(false)
+    setSyncStatus('loading')
+    setCloudError('')
+    setLoadAttempt((attempt) => attempt + 1)
+  }
+
+  return { cloudReady, syncStatus, cloudError, retryCloudSync }
 }
