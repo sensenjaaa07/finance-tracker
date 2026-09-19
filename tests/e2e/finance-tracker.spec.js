@@ -116,7 +116,8 @@ async function addCategory(page, name, amount) {
 
 async function addIncome(page, title, amount, accountName) {
   await openAddForm(page, 'Add Income')
-  await page.locator('#income-account').selectOption({ label: new RegExp(accountName) })
+  const incomeAccountOption = page.locator('#income-account option').filter({ hasText: accountName }).first()
+  await page.locator('#income-account').selectOption(await incomeAccountOption.getAttribute('value'))
   await page.locator('#income-title').fill(title)
   await page.locator('#income-amount').fill(String(amount))
   await page.locator('#income-date').fill(today)
@@ -127,7 +128,8 @@ async function addIncome(page, title, amount, accountName) {
 async function addExpense(page, title, amount, categoryName, accountName) {
   await openAddForm(page, 'Add Expense')
   await page.locator('#expense-category').selectOption(categoryName)
-  await page.locator('#expense-account').selectOption({ label: new RegExp(accountName) })
+  const expenseAccountOption = page.locator('#expense-account option').filter({ hasText: accountName }).first()
+  await page.locator('#expense-account').selectOption(await expenseAccountOption.getAttribute('value'))
   await page.locator('#expenses-title').fill(title)
   await page.locator('#expenses-amount').fill(String(amount))
   await page.locator('#expenses-date').fill(today)
@@ -212,6 +214,7 @@ test('desktop: blocks deleting an account with transaction history', async ({ pa
   await mockCloud(page, seedDataset)
   await page.evaluate((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
   await page.reload()
+  await page.getByRole('link', { name: 'Transactions' }).click()
   await expect(page.getByText('Lunch')).toBeVisible()
 
   await page.getByRole('link', { name: 'Accounts' }).click()
