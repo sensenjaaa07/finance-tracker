@@ -162,6 +162,7 @@ function App() {
     const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
     if (!categoryDefinition) return false
 
+    const linkedExpenses = expenseEntries.filter(entry => entry.category === categoryDefinition.name).length
     setCategoryDefinitions(previous => previous.filter(entry => entry.id !== categoryId))
     setCategoryEntriesByMonth(previous => {
       const next = { ...previous }
@@ -170,14 +171,13 @@ function App() {
       })
       return next
     })
+    setBudgets(previous => previous.filter(budget => String(budget.categoryId ?? '') !== String(categoryId)))
+    setExpenseEntries(previous => previous.map(entry => entry.category === categoryDefinition.name ? { ...entry, category: 'Uncategorized' } : entry))
 
-    // Keep existing spending visible and accounted for after a category is deleted.
-    setExpenseEntries(previous => previous.map(entry => (
-      entry.category === categoryDefinition.name
-        ? { ...entry, category: 'Uncategorized' }
-        : entry
-    )))
-    setToastMessage(`${categoryDefinition.name} deleted. Existing expenses were moved to Uncategorized.`)
+    const movedMessage = linkedExpenses > 0
+      ? ' ' + linkedExpenses + ' existing expense' + (linkedExpenses === 1 ? '' : 's') + ' moved to Uncategorized.'
+      : ''
+    setToastMessage(categoryDefinition.name + ' and its budget allocations were deleted.' + movedMessage)
     return true
   }
 
@@ -461,7 +461,7 @@ function App() {
     <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} onReallocateBudget={reallocateBudget} />} />
     <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} accounts={netWorthEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} onDeleteTransfer={deleteTransfer} />} />
     <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={netWorthEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
-    <Route path="/net-worth" element={<NetWorth netWorthEntries={netWorthEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateNetWorthEntry={updateNetWorthEntry} onDeleteNetWorthEntry={deleteNetWorthEntry} onTransfer={handleTransfer} />} />
+    <Route path="/net-worth" element={<NetWorth netWorthEntries={netWorthEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateNetWorthEntry={updateNetWorthEntry} onAdjustAccountBalance={adjustAccountBalance} onDeleteNetWorthEntry={deleteNetWorthEntry} onTransfer={handleTransfer} />} />
   </Routes></main>{renderCard()}{toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}</div>
 }
 
