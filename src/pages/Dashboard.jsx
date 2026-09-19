@@ -7,7 +7,7 @@ import filterExpensesByDate from '../services/filterExpensesByDate.js'
 import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
 import { useEffect, useMemo, useState } from 'react'
 
-const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
+const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseEntries, allIncomeEntries = incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
   const [selectedCategory, setSelectedCategory] = useState(() => {
     try {
       return localStorage.getItem('finance-tracker-selected-category') || 'all'
@@ -51,29 +51,29 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   }
 
   const rangeFilteredExpenses = useMemo(() => {
-    if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return expenseEntries.filter((entry) => matchesRange(entry.date))
-    return filterExpensesByDate(expenseEntries, monthStart, monthEnd)
-  }, [expenseEntries, monthEnd, monthStart, rangeKey, selectedMonth])
+    if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allExpenseEntries.filter((entry) => matchesRange(entry.date))
+    return filterExpensesByDate(allExpenseEntries, monthStart, monthEnd)
+  }, [allExpenseEntries, monthEnd, monthStart, rangeKey, selectedMonth])
 
   const rangeFilteredIncome = useMemo(() => {
-    if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return incomeEntries.filter((entry) => matchesRange(entry.date))
-    return filterExpensesByDate(incomeEntries, monthStart, monthEnd)
-  }, [incomeEntries, monthEnd, monthStart, rangeKey, selectedMonth])
+    if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allIncomeEntries.filter((entry) => matchesRange(entry.date))
+    return filterExpensesByDate(allIncomeEntries, monthStart, monthEnd)
+  }, [allIncomeEntries, monthEnd, monthStart, rangeKey, selectedMonth])
 
   const visibleExpenses = rangeFilteredExpenses
   const visibleIncome = rangeFilteredIncome
-  const uncategorizedEntries = visibleExpenses.filter((expense) => !expense.category || expense.category === 'Uncategorized')
+  const uncategorizedEntries = expenseEntries.filter((expense) => !expense.category || expense.category === 'Uncategorized')
   const filteredCategories = selectedCategory === 'all' ? categoryEntries : selectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === selectedCategory)
   const selectedCategoryEntry = selectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === selectedCategory) ?? null
-  const totalIncome = visibleIncome.reduce((total, entry) => total + entry.amount, 0)
+  const totalIncome = incomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAllocated = categoryEntries.reduce((total, entry) => total + entry.amount, 0)
-  const totalSpent = selectedCategory === 'all' ? visibleExpenses.reduce((total, entry) => total + entry.amount, 0) : visibleExpenses.filter((expense) => expense.category === selectedCategory).reduce((total, entry) => total + entry.amount, 0)
+  const totalSpent = selectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === selectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalRemaining = selectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
   const selectedCategoryLabel = selectedCategory === 'all' ? 'All categories' : selectedCategory
   // Uncategorized spending uses money that has not been assigned to a budget category.
   // When Uncategorized is selected, reflect that spending by deducting it from the
   // amount still available to allocate instead of treating it as a separate budget.
-  const uncategorizedSpent = visibleExpenses.filter((expense) => !expense.category || expense.category === 'Uncategorized').reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const uncategorizedSpent = expenseEntries.filter((expense) => !expense.category || expense.category === 'Uncategorized').reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAvailableToAllocate = totalIncome - totalAllocated - uncategorizedSpent
 
   const toggleMetric = (metricKey) => setVisibleMetrics((previousState) => ({ ...previousState, [metricKey]: !previousState[metricKey] }))
@@ -113,17 +113,17 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
         headerCycle: budgetCycle,
         startDate: periodRange.startDate,
         endDate: periodRange.endDate,
-        expenses: expenseEntries,
+        expenses: allExpenseEntries,
         today: new Date(),
       })
     }
 
     if (activeBudget && budgetPeriod === activeBudget.periodType && budgetPeriod !== 'custom') {
-      return calculateCategoryBudgetMetrics({ category: budgetCategory, amount: activeBudget.amount, periodType: activeBudget.periodType, startDate: activeBudget.startDate, endDate: activeBudget.endDate, expenses: expenseEntries })
+      return calculateCategoryBudgetMetrics({ category: budgetCategory, amount: activeBudget.amount, periodType: activeBudget.periodType, startDate: activeBudget.startDate, endDate: activeBudget.endDate, expenses: allExpenseEntries })
     }
     const range = budgetPeriod === 'custom' ? getBudgetRangeForPeriod('custom', new Date(), customStartDate, customEndDate) : getBudgetRangeForPeriod(budgetPeriod)
-    return calculateCategoryBudgetMetrics({ category: budgetCategory, amount, periodType: budgetPeriod, startDate: budgetPeriod === 'custom' ? range.startDate : undefined, endDate: budgetPeriod === 'custom' ? range.endDate : undefined, expenses: expenseEntries })
-  }, [budgetCategory, budgetCycle, budgetPeriod, budgets, customEndDate, customStartDate, expenseEntries, selectedMonth])
+    return calculateCategoryBudgetMetrics({ category: budgetCategory, amount, periodType: budgetPeriod, startDate: budgetPeriod === 'custom' ? range.startDate : undefined, endDate: budgetPeriod === 'custom' ? range.endDate : undefined, expenses: allExpenseEntries })
+  }, [allExpenseEntries, budgetCategory, budgetCycle, budgetPeriod, budgets, customEndDate, customStartDate, selectedMonth])
 
   const budgetPeriodLabel = budgetMetrics?.totalDays ? `${budgetMetrics.totalDays} days` : 'Custom range'
   const formatBudgetDate = (dateValue) => dateValue ? new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -178,7 +178,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
             ? <p className="empty-state">{selectedCategory === 'all' ? 'Create a budget category to start tracking what is left.' : `No budget category named ${selectedCategoryLabel} has been created yet.`}</p>
             : <div className="entry-list">
                 {filteredCategories.map((category) => {
-                  const spent = visibleExpenses.filter((expense) => expense.category === category.name).reduce((total, expense) => total + expense.amount, 0)
+                  const spent = expenseEntries.filter((expense) => expense.category === category.name).reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
                   const remaining = category.amount - spent
                   const isSelected = selectedCategory === category.name
                   return (
