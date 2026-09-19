@@ -172,8 +172,24 @@ function App() {
 
   function deleteCategoryEntry(categoryId) {
     const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
+    if (!categoryDefinition) return false
+
     setCategoryDefinitions(previous => previous.filter(entry => entry.id !== categoryId))
-    setCategoryEntriesByMonth(previous => { const next = { ...previous }; Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== categoryId && (!categoryDefinition || entry.name !== categoryDefinition.name)) }); return next })
+    setCategoryEntriesByMonth(previous => {
+      const next = { ...previous }
+      Object.keys(next).forEach(key => {
+        next[key] = (next[key] ?? []).filter(entry => entry.id !== categoryId && entry.name !== categoryDefinition.name)
+      })
+      return next
+    })
+
+    // Keep existing spending visible and accounted for after a category is deleted.
+    setExpenseEntries(previous => previous.map(entry => (
+      entry.category === categoryDefinition.name
+        ? { ...entry, category: 'Uncategorized' }
+        : entry
+    )))
+    setToastMessage(`${categoryDefinition.name} deleted. Existing expenses were moved to Uncategorized.`)
     return true
   }
 
@@ -302,18 +318,25 @@ function App() {
     const incomeToDelete = incomeEntries.find(entry => entry.id === incomeId)
     if (!incomeToDelete) return false
 
-    setIncomeEntries(previous => previous.filter(entry => entry.id !== incomeId))
-
     const amount = Number(incomeToDelete.amount ?? 0)
     if (incomeToDelete.accountId && Number.isFinite(amount) && amount > 0) {
       const account = netWorthEntries.find(entry => entry.id === incomeToDelete.accountId)
-      if (account && Number(account.amount ?? 0) >= amount) {
-        changeAccountBalance(incomeToDelete.accountId, -amount)
-        setToastMessage(`₱${amount.toFixed(2)} was removed from ${account.name}.`)
-      } else {
-        setToastMessage('Income deleted, but the account balance could not be fully reversed.')
+      if (!account) {
+        setToastMessage('Income cannot be deleted because its account no longer exists.')
+        return false
       }
+      if (Number(account.amount ?? 0) < amount) {
+        setToastMessage(`Income cannot be deleted because ${account.name} no longer has enough balance to reverse it.`)
+        return false
+      }
+
+      changeAccountBalance(incomeToDelete.accountId, -amount)
+      setToastMessage(`₱${amount.toFixed(2)} was removed from ${account.name}.`)
+    } else {
+      setToastMessage('Income deleted successfully.')
     }
+
+    setIncomeEntries(previous => previous.filter(entry => entry.id !== incomeId))
     return true
   }
 
