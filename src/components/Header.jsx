@@ -7,19 +7,13 @@ const HEADER_PERIOD_STORAGE_KEY = 'finance-tracker-header-budget-cycle'
 const VALID_BUDGET_CYCLES = ['monthly', 'fortnightly-1', 'fortnightly-2']
 
 const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
-  function formatMonthLabel(monthValue) {
-    if (!monthValue) return 'Select month'
-    const [year, month] = monthValue.split('-')
-    return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-  }
-
   useEffect(() => {
     if (!showMonthFilter || typeof window === 'undefined') return
     const savedCycle = window.localStorage.getItem(HEADER_PERIOD_STORAGE_KEY)
     if (VALID_BUDGET_CYCLES.includes(savedCycle) && savedCycle !== budgetCycle) {
       onBudgetCycleChange?.(savedCycle)
     }
-  }, [showMonthFilter, onBudgetCycleChange])
+  }, [showMonthFilter, onBudgetCycleChange, budgetCycle])
 
   const handleBudgetCycleChange = (value) => {
     onBudgetCycleChange?.(value)
