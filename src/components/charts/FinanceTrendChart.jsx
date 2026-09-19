@@ -44,6 +44,15 @@ const FinanceTrendChart = ({ data = [] }) => {
           <Legend />
           <Line
             type="monotone"
+            dataKey="income"
+            name="Income"
+            stroke="#059669"
+            strokeWidth={2.5}
+            dot={{ r: 4 }}
+            activeDot={{ r: 6 }}
+          />
+          <Line
+            type="monotone"
             dataKey="actualExpenses"
             name="Actual Expenses"
             stroke="#E11D48"
