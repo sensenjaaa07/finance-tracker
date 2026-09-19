@@ -12,6 +12,7 @@ const emptyDataset = {
 
 const today = '2026-09-19'
 const seedMonth = '2026-09'
+const seedMonth = '2026-09'
 
 const seedDataset = {
   expenses: [
@@ -55,12 +56,12 @@ const cloneDataset = (value) => JSON.parse(JSON.stringify(value))
 async function mockCloud(page, initialData = emptyDataset, options = {}) {
   let currentData = cloneDataset(initialData)
   let updatedAt = 1
-  let failFirstGet = Boolean(options.failFirstGet)
+  let failGetsRemaining = options.failFirstGet ? 2 : 0
 
   await page.route('**/api/data', async (route) => {
     if (route.request().method() === 'GET') {
-      if (failFirstGet) {
-        failFirstGet = false
+      if (failGetsRemaining > 0) {
+        failGetsRemaining -= 1
         await route.fulfill({
           status: 503,
           contentType: 'application/json',
@@ -102,7 +103,7 @@ async function addAccount(page, name, amount) {
   await openAddForm(page, 'Add Account')
   await page.locator('input[name="netWorthName"]').fill(name)
   await page.locator('input[name="amount"]').fill(String(amount))
-  await page.getByRole('button', { name: 'Add Account' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add Account' }).click()
   await expect(page.getByText('Your account was added successfully.')).toBeVisible()
 }
 
@@ -110,7 +111,7 @@ async function addCategory(page, name, amount) {
   await openAddForm(page, 'Add Category')
   await page.locator('input[name="category"]').fill(name)
   await page.locator('input[name="amount"]').fill(String(amount))
-  await page.getByRole('button', { name: 'Add Category' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add Category' }).click()
   await expect(page.getByText('Your category was saved successfully.')).toBeVisible()
 }
 
@@ -120,7 +121,7 @@ async function addIncome(page, title, amount, accountName) {
   await page.locator('#income-title').fill(title)
   await page.locator('#income-amount').fill(String(amount))
   await page.locator('#income-date').fill(today)
-  await page.getByRole('button', { name: 'Add Income' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add Income' }).click()
   await expect(page.getByText(/was added to/)).toBeVisible()
 }
 
@@ -131,7 +132,7 @@ async function addExpense(page, title, amount, categoryName, accountName) {
   await page.locator('#expenses-title').fill(title)
   await page.locator('#expenses-amount').fill(String(amount))
   await page.locator('#expenses-date').fill(today)
-  await page.getByRole('button', { name: 'Add Expense' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Add Expense' }).click()
   await expect(page.getByText(/deducted from/)).toBeVisible()
 }
 
@@ -210,7 +211,7 @@ test('desktop: blocks deleting an account with transaction history', async ({ pa
   test.skip(test.info().project.name !== 'chromium', 'Desktop workflow')
   await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
-  await page.addInitScript((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
+  await page.evaluate((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
   await page.reload()
   await expect(page.getByText('Lunch')).toBeVisible()
 
@@ -236,14 +237,14 @@ test('mobile: transaction cards expose complete details in the popup', async ({ 
   test.skip(test.info().project.name !== 'mobile', 'Mobile workflow')
   await page.unroute('**/api/data')
   await mockCloud(page, seedDataset)
-  await page.addInitScript((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
+  await page.evaluate((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
   await page.goto('/transactions')
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
   await expect(page.locator('.transactions-mobile-list')).toBeVisible()
   await page.getByRole('button', { name: /Lunch/ }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.getByText('Main Account')).toBeVisible()
-  await expect(page.getByText('Food')).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('Main Account', { exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('Food', { exact: true })).toBeVisible()
   await expect(page.getByText('Time added')).toBeVisible()
 })
 
