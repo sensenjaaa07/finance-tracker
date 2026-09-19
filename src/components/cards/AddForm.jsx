@@ -54,6 +54,7 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
               <option value="" disabled>Select an account</option>
               {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}
             </select>
+            {accounts.length === 0 && <p className="add-form-helper add-form-helper-warning">Add an account first so this expense can be deducted from a real balance.</p>}
           </>
         )}
         {formType === 'Income' && (
@@ -63,6 +64,7 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
               <option value="" disabled>Select an account</option>
               {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — ₱{Number(account.amount ?? 0).toFixed(2)}</option>)}
             </select>
+            {accounts.length === 0 && <p className="add-form-helper add-form-helper-warning">Add an account first so this income can be recorded in a destination account.</p>}
           </>
         )}
         {formType !== 'Expenses' && formType !== 'Income' && (
