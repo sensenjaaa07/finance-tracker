@@ -172,9 +172,8 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await page.getByRole('dialog').getByLabel('To category').selectOption({ label: /Transport/ })
   await page.getByRole('dialog').getByLabel('Amount to move').fill('500')
   await page.getByRole('dialog').getByRole('button', { name: 'Move budget' }).click()
-  await expect(page.getByText('₱2,500.00').first()).toBeVisible()
-
   const foodCard = page.locator('.budget-card', { hasText: 'Food' })
+  await expect(foodCard.getByText('₱2,500.00')).toBeVisible()
   await foodCard.getByRole('button', { name: 'Delete Food' }).click()
   await expect(page.getByRole('heading', { name: 'Delete category?' })).toBeVisible()
   await expect(page.getByText(/Existing expenses will be kept and moved to Uncategorized/)).toBeVisible()
