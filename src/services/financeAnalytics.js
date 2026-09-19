@@ -201,16 +201,6 @@ const matchesSelectedPeriod = (dateValue, selectedMonth, rangeKey) => {
   return true
 }
 
-const sumEntriesBySelectedPeriod = (entries = [], selectedMonth, rangeKey) => {
-  return entries.reduce((total, entry) => {
-    if (!matchesSelectedPeriod(entry.date, selectedMonth, rangeKey)) {
-      return total
-    }
-
-    return total + Number(entry.amount ?? 0)
-  }, 0)
-}
-
 export const calculateExpenseForecast = (expenseEntries = [], monthKeys = [], selectedMonth, rangeKey = '6m') => {
   if (!monthKeys.length) {
     return new Map()
