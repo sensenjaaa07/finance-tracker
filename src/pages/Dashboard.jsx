@@ -69,7 +69,10 @@ const Dashboard = ({ expenseEntries, incomeEntries, categoryEntries, budgets = [
   const totalSpent = selectedCategory === 'all' ? visibleExpenses.reduce((total, entry) => total + entry.amount, 0) : visibleExpenses.filter((expense) => expense.category === selectedCategory).reduce((total, entry) => total + entry.amount, 0)
   const totalRemaining = selectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
   const selectedCategoryLabel = selectedCategory === 'all' ? 'All categories' : selectedCategory
-  const totalAvailableToAllocate = totalIncome - totalAllocated
+  // Uncategorized spending uses money that has not been assigned to a budget category.
+  // When Uncategorized is selected, reflect that spending by deducting it from the
+  // amount still available to allocate instead of treating it as a separate budget.
+  const totalAvailableToAllocate = totalIncome - totalAllocated - (selectedCategory === 'Uncategorized' ? totalSpent : 0)
 
   const toggleMetric = (metricKey) => setVisibleMetrics((previousState) => ({ ...previousState, [metricKey]: !previousState[metricKey] }))
   const metricCards = [
