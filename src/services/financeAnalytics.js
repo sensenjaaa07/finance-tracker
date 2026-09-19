@@ -313,6 +313,7 @@ export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], select
       return {
         month: dayKey,
         label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        income: incomeByDay.get(dayKey) ?? 0,
         actualExpenses,
         forecastExpenses,
       }
@@ -331,6 +332,7 @@ export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], select
     return {
       month: monthKey,
       label,
+      income: incomeByMonth.get(monthKey) ?? 0,
       actualExpenses,
       forecastExpenses: forecastByMonth.get(monthKey) ?? 0,
     }
