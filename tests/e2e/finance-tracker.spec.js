@@ -154,7 +154,7 @@ test('desktop: covers navigation, accounts, income, budgets, expenses, reallocat
   await addAccount(page, 'Savings', 2000)
 
   await page.getByRole('link', { name: 'Income' }).click()
-  await addIncome(page, 'Salary', 3000, 'Main Account')
+  await addIncome(page, 'Salary', 6000, 'Main Account')
 
   await page.getByRole('link', { name: 'Budget' }).click()
   await addCategory(page, 'Food', 3000)
@@ -215,7 +215,7 @@ test('desktop: blocks deleting an account with transaction history', async ({ pa
   await page.evaluate((month) => localStorage.setItem('finance-tracker-selected-month', month), seedMonth)
   await page.reload()
   await page.getByRole('link', { name: 'Transactions' }).click()
-  await expect(page.getByText('Lunch')).toBeVisible()
+  await expect(page.locator('.transactions-table tbody tr', { hasText: 'Lunch' })).toBeVisible()
 
   await page.getByRole('link', { name: 'Accounts' }).click()
   await page.getByRole('button', { name: 'Delete Main Account' }).click()
@@ -247,7 +247,7 @@ test('mobile: transaction cards expose complete details in the popup', async ({ 
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByRole('dialog').getByText('Main Account', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog').getByText('Food', { exact: true })).toBeVisible()
-  await expect(page.getByText('Time added')).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('Time added', { exact: true })).toBeVisible()
 })
 
 test('mobile: navigation drawer and filters remain usable', async ({ page }) => {
