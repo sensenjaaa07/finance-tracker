@@ -66,6 +66,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
   const filteredCategories = selectedCategory === 'all' ? categoryEntries : selectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === selectedCategory)
   const selectedCategoryEntry = selectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === selectedCategory) ?? null
   const totalIncome = incomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
+  const analyticsIncomeTotal = visibleIncome.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAllocated = categoryEntries.reduce((total, entry) => total + entry.amount, 0)
   const totalSpent = selectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === selectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalRemaining = selectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
@@ -155,7 +156,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
         </>}
       </div>
 
-      <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Income vs Expenses & Forecast</h2></div><div className="chart-summary-inline"><span>Income</span><strong>{formatCurrency(totalIncome)}</strong><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
+      <div className="analytics-grid"><div className="analytics-card analytics-card-wide"><div className="chart-header"><div><p className="chart-eyebrow">Financial performance</p><h2>Income vs Expenses & Forecast</h2></div><div className="chart-summary-inline"><span>Income</span><strong>{formatCurrency(analyticsIncomeTotal)}</strong><span>Actual expenses</span><strong>{formatCurrency(totalActualExpense)}</strong><span>Estimated forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><FinanceTrendChart data={trendData} /></div><div className="analytics-card"><div className="chart-header"><div><p className="chart-eyebrow">Spending mix</p><h2>Expenses by Category</h2></div><div className="chart-summary-inline"><span>Forecast</span><strong>{formatCurrency(totalForecastExpense)}</strong></div></div><CategoryBreakdownChart data={categoryBreakdownData} /></div></div>
 
       <div className="dashboard-section">
         <h2>{selectedCategory === 'all' ? 'Budget left by category' : selectedCategory === 'Uncategorized' ? 'Uncategorized expenses' : `${selectedCategoryLabel} breakdown`}</h2>
