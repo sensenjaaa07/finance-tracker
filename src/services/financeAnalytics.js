@@ -70,7 +70,6 @@ export const buildMonthKeysForRange = (selectedMonth, rangeKey) => {
   } else if (rangeKey === '12m') {
     monthCount = 12
   } else if (rangeKey === 'year') {
-    monthCount = 12
     const start = new Date(year, 0, 1)
     const months = []
 
