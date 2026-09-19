@@ -21,6 +21,9 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
   const [visibleMetrics, setVisibleMetrics] = useState({ spent: true, cashLeft: true, allocated: false, availableToAllocate: true })
   const [metricOrder] = useState(['cashLeft', 'spent', 'availableToAllocate', 'allocated'])
 
+  const selectedCategoryIsValid = selectedCategory === 'all' || selectedCategory === 'Uncategorized' || categoryEntries.some((category) => category.name === selectedCategory)
+  const resolvedSelectedCategory = selectedCategoryIsValid ? selectedCategory : 'all'
+
   useEffect(() => {
     try {
       localStorage.setItem('finance-tracker-selected-category', selectedCategory)
@@ -54,14 +57,14 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
 
   const visibleIncome = rangeFilteredIncome
   const uncategorizedEntries = expenseEntries.filter((expense) => !expense.category || expense.category === 'Uncategorized')
-  const filteredCategories = resolvedSelectedCategory === 'all' ? categoryEntries : resolvedSelectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === selectedCategory)
+  const filteredCategories = resolvedSelectedCategory === 'all' ? categoryEntries : resolvedSelectedCategory === 'Uncategorized' ? [] : categoryEntries.filter((category) => category.name === resolvedSelectedCategory)
   const selectedCategoryEntry = resolvedSelectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === resolvedSelectedCategory) ?? null
   const totalIncome = incomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const analyticsIncomeTotal = visibleIncome.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAllocated = categoryEntries.reduce((total, entry) => total + entry.amount, 0)
   const totalSpent = resolvedSelectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === resolvedSelectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalRemaining = resolvedSelectedCategory === 'all' ? totalIncome - totalSpent : (selectedCategoryEntry ? selectedCategoryEntry.amount - totalSpent : 0)
-  const selectedCategoryLabel = resolvedSelectedCategory === 'all' ? 'All categories' : selectedCategory
+  const selectedCategoryLabel = resolvedSelectedCategory === 'all' ? 'All categories' : resolvedSelectedCategory
   // Uncategorized spending uses money that has not been assigned to a budget category.
   // When Uncategorized is selected, reflect that spending by deducting it from the
   // amount still available to allocate instead of treating it as a separate budget.
@@ -125,7 +128,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     <section>
       <Header pageTitle={"Overview"} onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} />
       <div className="dashboard-filter-bar">
-        <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={resolvedSelectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{selectedCategory === "all" ? "All categories" : selectedCategory}</strong></span></div>
+        <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={resolvedSelectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{resolvedSelectedCategory === 'all' ? 'All categories' : resolvedSelectedCategory}</strong></span></div>
         <div className="dashboard-filter-group dashboard-visibility-group"><span>Visible metrics</span><div className="dashboard-visibility-toggle-group">{orderedMetricButtons.map((metric) => <button key={metric.key} type="button" className={`metric-toggle ${visibleMetrics[metric.key] ? 'is-visible' : 'is-hidden'}`} onClick={() => toggleMetric(metric.key)}>{metric.label}</button>)}</div></div>
         <div className="dashboard-filter-group dashboard-range-group"><label htmlFor="dashboard-range-filter">Analytics range</label><select id="dashboard-range-filter" value={rangeKey} onChange={(event) => setRangeKey(event.target.value)}><option value="month">This month</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="12m">Last 12 months</option><option value="year">This year</option></select></div>
       </div>
@@ -172,7 +175,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
                 {filteredCategories.map((category) => {
                   const spent = expenseEntries.filter((expense) => expense.category === category.name).reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
                   const remaining = category.amount - spent
-                  const isSelected = selectedCategory === category.name
+                  const isSelected = resolvedSelectedCategory === category.name
                   return (
                     <div className={`entry-list-item info-card ${isSelected ? 'is-selected' : ''}`} key={category.id} onClick={() => setSelectedCategory(category.name)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedCategory(category.name) } }}>
                       <div className="info-card-header"><p className="info-card-label">Category</p><span className="budget-card-badge">Open</span></div>
