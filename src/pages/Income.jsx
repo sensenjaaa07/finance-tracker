@@ -28,20 +28,17 @@ const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, on
 
     if (!draft.title.trim() || !draft.accountId || !Number.isFinite(nextAmount) || nextAmount <= 0 || Number.isNaN(nextDate.getTime())) return
 
-    onUpdateIncomeEntry(editingIncome.id, {
+    if (onUpdateIncomeEntry(editingIncome.id, {
       title: draft.title.trim(),
       amount: nextAmount,
       date: nextDate,
       accountId: draft.accountId,
-    })
-
-    setEditingIncome(null)
+    })) setEditingIncome(null)
   }
 
   const confirmDeleteIncome = () => {
     if (!onDeleteIncomeEntry || !pendingDeleteIncome) return
-    onDeleteIncomeEntry(pendingDeleteIncome.id)
-    setPendingDeleteIncome(null)
+    if (onDeleteIncomeEntry(pendingDeleteIncome.id)) setPendingDeleteIncome(null)
   }
 
   return (
@@ -105,7 +102,7 @@ const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, on
               </div>
               <div>
                 <span className="budget-card-label">Date</span>
-                <p>{incomeEntry.date.toLocaleDateString()}</p>
+                <p>{incomeEntry.date.toLocaleDateString('en-PH')}</p>
               </div>
               <div>
                 <span className="budget-card-label">Account</span>
