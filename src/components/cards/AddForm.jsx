@@ -8,27 +8,27 @@ const formDefinitions = {
     title: 'Expense',
     fields: [
       { name: 'title', type: 'text', label: 'Description', placeholder: 'e.g. Groceries' },
-      { name: 'amount', type: 'number', label: 'Amount', placeholder: '0.00' },
+      { name: 'amount', type: 'number', label: 'Amount', placeholder: '0.00', min: '0.01', step: '0.01', inputMode: 'decimal' },
       { name: 'date', type: 'date', label: 'Date' },
     ],
   },
   Categories: {
     title: 'Category',
     nameField: { name: 'category', type: 'text', placeholder: 'Category Name' },
-    amountField: { name: 'amount', type: 'number', placeholder: 'Amount' },
+    amountField: { name: 'amount', type: 'number', placeholder: 'Amount', min: '0', step: '0.01', inputMode: 'decimal' },
   },
   Income: {
     title: 'Income',
     fields: [
       { name: 'title', type: 'text', label: 'Source', placeholder: 'e.g. Salary' },
-      { name: 'amount', type: 'number', label: 'Amount', placeholder: '0.00' },
+      { name: 'amount', type: 'number', label: 'Amount', placeholder: '0.00', min: '0.01', step: '0.01', inputMode: 'decimal' },
       { name: 'date', type: 'date', label: 'Date' },
     ],
   },
   'Net-Worth': {
     title: 'Account',
     nameField: { name: 'netWorthName', type: 'text', placeholder: 'Account Name' },
-    amountField: { name: 'amount', type: 'number', placeholder: 'Initial Balance' },
+    amountField: { name: 'amount', type: 'number', placeholder: 'Initial Balance', min: '0', step: '0.01', inputMode: 'decimal' },
   },
 }
 
@@ -78,9 +78,9 @@ const AddForm = ({ formType, entries = [], accounts = [], onSubmit, onClose }) =
             </select>
           </>
         )}
-        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => <div className="add-form-field" key={field.name}><label className="add-form-label" htmlFor={`${formType.toLowerCase()}-${field.name}`}>{field.label}</label><input id={`${formType.toLowerCase()}-${field.name}`} name={field.name} type={field.type} placeholder={field.placeholder} required /></div>)}
+        {(formType === 'Expenses' || formType === 'Income') && formDefinition.fields.map((field) => <div className="add-form-field" key={field.name}><label className="add-form-label" htmlFor={`${formType.toLowerCase()}-${field.name}`}>{field.label}</label><input id={`${formType.toLowerCase()}-${field.name}`} name={field.name} type={field.type} placeholder={field.placeholder} min={field.min} step={field.step} inputMode={field.inputMode} required /></div>)}
         {formType !== 'Expenses' && formType !== 'Income' && entryAction === 'new' && <input {...formDefinition.nameField} required />}
-        {formType !== 'Expenses' && formType !== 'Income' && <input {...formDefinition.amountField} min="0.01" step="0.01" required />}
+        {formType !== 'Expenses' && formType !== 'Income' && <input {...formDefinition.amountField} required />}
         <button type="submit" disabled={(formType === 'Expenses' || formType === 'Income') && accounts.length === 0}><FontAwesomeIcon icon={faPlus} aria-hidden="true" />{formType === 'Expenses' ? 'Add Expense' : formType === 'Income' ? 'Add Income' : formType === 'Categories' ? (entryAction === 'new' ? 'Add Category' : 'Add to Category') : (entryAction === 'new' ? 'Add Account' : 'Add to Account')}</button>
       </form>
     </div>
