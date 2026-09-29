@@ -15,9 +15,6 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     }
   })
   const [rangeKey, setRangeKey] = useState('6m')
-  const [budgetPeriod, setBudgetPeriod] = useState('15_days')
-  const [customStartDate, setCustomStartDate] = useState('')
-  const [customEndDate, setCustomEndDate] = useState('')
   const [visibleMetrics, setVisibleMetrics] = useState({ spent: true, cashLeft: true, allocated: false, availableToAllocate: true })
   const [metricOrder] = useState(['cashLeft', 'spent', 'availableToAllocate', 'allocated'])
 
@@ -90,35 +87,24 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     if (!budgetCategory) return null
     const activeBudget = getActiveBudgetForCategory({ categoryId: budgetCategory.id, budgets })
     const amount = activeBudget?.amount ?? budgetCategory.amount ?? 0
+    const customPeriod = budgetCycle?.startsWith('custom|') ? budgetCycle.split('|') : null
+    const periodType = customPeriod ? 'custom' : budgetCycle === 'fortnightly-1' || budgetCycle === 'fortnightly-2' ? '15_days' : 'monthly'
+    const selectedMonthDate = selectedMonth ? new Date(`${selectedMonth}-01T00:00:00`) : new Date()
+    const range = customPeriod
+      ? getBudgetRangeForPeriod('custom', new Date(), customPeriod[1], customPeriod[2])
+      : getBudgetRangeForPeriod(periodType, selectedMonthDate, '', '', budgetCycle)
 
-    // The header cycle determines the budget range, but "Days elapsed" must
-    // always use the actual current date rather than the cycle's start date.
-    if (budgetPeriod === '15_days') {
-      const periodRange = getBudgetRangeForPeriod(
-        '15_days',
-        new Date(),
-        '',
-        '',
-        budgetCycle
-      )
-      return calculateCategoryBudgetMetrics({
-        category: budgetCategory,
-        amount,
-        periodType: '15_days',
-        headerCycle: budgetCycle,
-        startDate: periodRange.startDate,
-        endDate: periodRange.endDate,
-        expenses: allExpenseEntries,
-        today: new Date(),
-      })
-    }
-
-    if (activeBudget && budgetPeriod === activeBudget.periodType && budgetPeriod !== 'custom') {
-      return calculateCategoryBudgetMetrics({ category: budgetCategory, amount: activeBudget.amount, periodType: activeBudget.periodType, startDate: activeBudget.startDate, endDate: activeBudget.endDate, expenses: allExpenseEntries })
-    }
-    const range = budgetPeriod === 'custom' ? getBudgetRangeForPeriod('custom', new Date(), customStartDate, customEndDate) : getBudgetRangeForPeriod(budgetPeriod)
-    return calculateCategoryBudgetMetrics({ category: budgetCategory, amount, periodType: budgetPeriod, startDate: budgetPeriod === 'custom' ? range.startDate : undefined, endDate: budgetPeriod === 'custom' ? range.endDate : undefined, expenses: allExpenseEntries })
-  }, [allExpenseEntries, budgetCategory, budgetCycle, budgetPeriod, budgets, customEndDate, customStartDate])
+    return calculateCategoryBudgetMetrics({
+      category: budgetCategory,
+      amount,
+      periodType,
+      headerCycle: budgetCycle,
+      startDate: range.startDate,
+      endDate: range.endDate,
+      expenses: allExpenseEntries,
+      today: new Date(),
+    })
+  }, [allExpenseEntries, budgetCategory, budgetCycle, budgets, selectedMonth])
 
   const budgetPeriodLabel = budgetMetrics?.totalDays ? `${budgetMetrics.totalDays} days` : 'Custom range'
   const formatBudgetDate = (dateValue) => dateValue ? new Date(`${dateValue}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
@@ -135,11 +121,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
       <div className="dashboard-summary">{metricCards.filter((metric) => visibleMetrics[metric.key]).sort((a, b) => metricOrder.indexOf(a.key) - metricOrder.indexOf(b.key)).map((metric) => <div className="summary-card" key={metric.key}><p>{metric.label}</p><strong className={metric.negative ? 'amount-negative' : ''}>{metric.value}</strong></div>)}</div>
 
       <div className="daily-budget-section">
-        <div className="daily-budget-header"><div><p className="chart-eyebrow">Daily budgeting</p><h2>How much can I spend?</h2><p className="daily-budget-description">Use the category selected in the View filter above, then choose a budget period to calculate a safe daily spending amount.</p></div>{budgetMetrics?.status === 'over_budget' && <span className="daily-budget-status status-danger">Over budget</span>}{budgetMetrics?.status === 'completed' && <span className="daily-budget-status status-neutral">Period ended</span>}{budgetMetrics?.status === 'active' && budgetMetrics.dailyStatus === 'under' && <span className="daily-budget-status status-good">On track</span>}</div>
-        <div className="daily-budget-controls">
-          <div className="dashboard-filter-group"><label htmlFor="budget-period-select">Budget period</label><select id="budget-period-select" value={budgetPeriod} onChange={(event) => setBudgetPeriod(event.target.value)}><option value="7_days">7 days</option><option value="15_days">15 days</option><option value="monthly">Monthly</option><option value="custom">Custom date range</option></select></div>
-          {budgetPeriod === 'custom' && <><div className="dashboard-filter-group"><label htmlFor="budget-start-date">Start date</label><input id="budget-start-date" type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} /></div><div className="dashboard-filter-group"><label htmlFor="budget-end-date">End date</label><input id="budget-end-date" type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} /></div></>}
-        </div>
+        <div className="daily-budget-header"><div><p className="chart-eyebrow">Daily budgeting</p><h2>How much can I spend?</h2><p className="daily-budget-description">Daily budgeting uses the month and pay period selected in the header.</p></div>{budgetMetrics?.status === 'over_budget' && <span className="daily-budget-status status-danger">Over budget</span>}{budgetMetrics?.status === 'completed' && <span className="daily-budget-status status-neutral">Period ended</span>}{budgetMetrics?.status === 'active' && budgetMetrics.dailyStatus === 'under' && <span className="daily-budget-status status-good">On track</span>}</div>
 
         {!budgetCategory ? <div className="daily-budget-empty">Select a specific category from the View filter above to use daily budgeting.</div> : !budgetMetrics?.hasBudget ? <div className="daily-budget-empty">No budget amount is available for <strong>{budgetCategory.name}</strong>. Add a category budget to start tracking daily spending.</div> : <>
           <div className="daily-budget-grid">
