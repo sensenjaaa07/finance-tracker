@@ -29,78 +29,44 @@ export const numberOfDaysInclusive = (startDate, endDate) => {
 
 export const getBudgetRangeForPeriod = (periodType = '15_days', anchorDate = new Date(), customStartDate = '', customEndDate = '', headerCycle = '') => {
   const today = parseLocalDate(anchorDate) ?? new Date()
-
   if (periodType === 'custom') {
     const customStart = parseLocalDate(customStartDate) ?? today
     const customEnd = parseLocalDate(customEndDate) ?? customStart
     const safeEnd = customEnd < customStart ? customStart : customEnd
     return { startDate: formatDateInput(customStart), endDate: formatDateInput(safeEnd), totalDays: numberOfDaysInclusive(customStart, safeEnd) }
   }
-
   if (periodType === 'monthly') {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    return {
-      startDate: formatDateInput(monthStart),
-      endDate: formatDateInput(monthEnd),
-      totalDays: numberOfDaysInclusive(monthStart, monthEnd),
-    }
+    return { startDate: formatDateInput(monthStart), endDate: formatDateInput(monthEnd), totalDays: numberOfDaysInclusive(monthStart, monthEnd) }
   }
-
   if (periodType === '7_days') {
-    // A 7-day budget always represents the calendar week: Monday through Sunday.
-    const dayOfWeek = today.getDay() // Sunday = 0, Monday = 1, ... Saturday = 6
+    const dayOfWeek = today.getDay()
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
     const weekStart = addDays(today, -daysFromMonday)
     const weekEnd = addDays(weekStart, 6)
-    return {
-      startDate: formatDateInput(weekStart),
-      endDate: formatDateInput(weekEnd),
-      totalDays: 7,
-    }
+    return { startDate: formatDateInput(weekStart), endDate: formatDateInput(weekEnd), totalDays: 7 }
   }
-
-  // A 15-day budget follows the header cycle when one is selected.
   if (periodType === '15_days') {
     if (headerCycle === 'fortnightly-1') {
       const periodStart = new Date(today.getFullYear(), today.getMonth(), 1)
       const periodEnd = new Date(today.getFullYear(), today.getMonth(), 15)
-      return {
-        startDate: formatDateInput(periodStart),
-        endDate: formatDateInput(periodEnd),
-        totalDays: 15,
-      }
+      return { startDate: formatDateInput(periodStart), endDate: formatDateInput(periodEnd), totalDays: 15 }
     }
-
     if (headerCycle === 'fortnightly-2') {
       const periodStart = new Date(today.getFullYear(), today.getMonth(), 16)
       const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-      return {
-        startDate: formatDateInput(periodStart),
-        endDate: formatDateInput(periodEnd),
-        totalDays: numberOfDaysInclusive(periodStart, periodEnd),
-      }
+      return { startDate: formatDateInput(periodStart), endDate: formatDateInput(periodEnd), totalDays: numberOfDaysInclusive(periodStart, periodEnd) }
     }
-
     if (today.getDate() <= 15) {
       const periodStart = new Date(today.getFullYear(), today.getMonth(), 1)
       const periodEnd = new Date(today.getFullYear(), today.getMonth(), 15)
-      return {
-        startDate: formatDateInput(periodStart),
-        endDate: formatDateInput(periodEnd),
-        totalDays: 15,
-      }
+      return { startDate: formatDateInput(periodStart), endDate: formatDateInput(periodEnd), totalDays: 15 }
     }
-
     const periodStart = new Date(today.getFullYear(), today.getMonth(), 16)
     const periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    return {
-      startDate: formatDateInput(periodStart),
-      endDate: formatDateInput(periodEnd),
-      totalDays: numberOfDaysInclusive(periodStart, periodEnd),
-    }
+    return { startDate: formatDateInput(periodStart), endDate: formatDateInput(periodEnd), totalDays: numberOfDaysInclusive(periodStart, periodEnd) }
   }
-
   return { startDate: formatDateInput(today), endDate: formatDateInput(today), totalDays: 1 }
 }
 
@@ -152,29 +118,16 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     return sum + Number(expense.amount ?? 0)
   }, 0)
 
+  // Keep today's recommendation fixed. Spending today is tracked separately.
+  const recommendedToday = originalDailyAllowance
+  const remainingToday = recommendedToday - todaysExpenses
   const futureDays = Math.max(remainingDays - 1, 0)
-  const todaysAllowance = remainingDays > 0 && remainingBudget + todaysExpenses >= 0
-    ? (remainingBudget + todaysExpenses) / remainingDays
-    : 0
-  const nextDailyAllowance = futureDays > 0 && remainingBudget >= 0
-    ? remainingBudget / futureDays
-    : 0
-  // Current recommended daily spending is always based on the budget
-  // remaining across the days still remaining in the selected period.
-  const currentDailyAllowance = remainingDays > 0 && remainingBudget >= 0
-    ? remainingBudget / remainingDays
-    : 0
-
+  const nextDailyAllowance = futureDays > 0 && remainingBudget >= 0 ? remainingBudget / futureDays : 0
+  const currentDailyAllowance = recommendedToday
   const percentageUsed = totalBudget > 0 ? (spent / totalBudget) * 100 : 0
-  const recommendedDailySpend = remainingBudget >= 0 ? currentDailyAllowance : 0
-  const dailyDifference = todaysExpenses - todaysAllowance
-  const dailyStatus = todaysAllowance <= 0
-    ? (todaysExpenses > 0 ? 'over' : 'on_track')
-    : dailyDifference < 0
-      ? 'under'
-      : dailyDifference > 0
-        ? 'over'
-        : 'on_track'
+  const recommendedDailySpend = remainingBudget >= 0 ? recommendedToday : 0
+  const dailyDifference = todaysExpenses - recommendedToday
+  const dailyStatus = remainingToday < 0 ? 'over' : remainingToday > 0 ? 'under' : 'on_track'
 
   let status = 'active'
   if (remainingBudget < 0) status = 'over_budget'
@@ -192,9 +145,11 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     daysElapsed,
     remainingDays,
     originalDailyAllowance,
-    todaysAllowance,
+    recommendedToday,
+    remainingToday,
+    todaysAllowance: recommendedToday,
     nextDailyAllowance,
-    currentDailyAllowance: remainingBudget < 0 ? 0 : currentDailyAllowance,
+    currentDailyAllowance,
     percentageUsed,
     todaysExpenses,
     dailyStatus,
