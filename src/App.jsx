@@ -57,12 +57,13 @@ function App() {
   }
 
   const currentCycleKey = getCycleKey(selectedMonth, budgetCycle)
-  const cycleKeysToDisplay = budgetCycle === 'monthly' ? [getCycleKey(selectedMonth, 'fortnightly-1'), getCycleKey(selectedMonth, 'fortnightly-2'), currentCycleKey] : [currentCycleKey]
-  const monthCategoryEntries = cycleKeysToDisplay.flatMap((key) => categoryEntriesByMonth[key] ?? [])
+  // Keep each pay period's budget allocation in its own bucket. The old implementation
+  // merged the two fortnightly buckets into the monthly bucket, which caused allocations
+  // to appear duplicated or to change when switching periods and then switching back.
+  const monthCategoryEntries = categoryEntriesByMonth[currentCycleKey] ?? []
   const categoryEntries = categoryDefinitions.map((definition) => {
-    const matchingEntries = monthCategoryEntries.filter((entry) => entry.id === definition.id || entry.name === definition.name)
-    const totalAmount = matchingEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-    return matchingEntries.length > 0 ? { ...definition, amount: totalAmount } : { ...definition, amount: 0 }
+    const matchingEntry = monthCategoryEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
+    return matchingEntry ? { ...definition, amount: Number(matchingEntry.amount ?? 0) } : { ...definition, amount: 0 }
   })
 
   const getCycleRange = (monthValue, cycleMode) => {
