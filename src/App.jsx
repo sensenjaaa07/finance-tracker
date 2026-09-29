@@ -28,53 +28,56 @@ function App() {
   const [transfers, setTransfers] = useState(EMPTY_DATA.transfers)
   const [budgets, setBudgets] = useState(EMPTY_DATA.budgets)
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    try {
-      return localStorage.getItem('finance-tracker-selected-month') || new Date().toISOString().slice(0, 7)
-    } catch {
-      return new Date().toISOString().slice(0, 7)
-    }
+    try { return localStorage.getItem('finance-tracker-selected-month') || new Date().toISOString().slice(0, 7) } catch { return new Date().toISOString().slice(0, 7) }
   })
   const [budgetCycle, setBudgetCycle] = useState('monthly')
   const [toastMessage, setToastMessage] = useState('')
 
   const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, accounts: accountEntries, transfers, budgets, budgetCycle }
-
-  useEffect(() => {
-    try { window.localStorage.setItem('finance-tracker-selected-month', selectedMonth) } catch { /* Ignore storage errors. */ }
-  }, [selectedMonth])
-
+  useEffect(() => { try { window.localStorage.setItem('finance-tracker-selected-month', selectedMonth) } catch { /* Ignore storage errors. */ } }, [selectedMonth])
   const { cloudReady, syncStatus, cloudError, retryCloudSync } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setAccountEntries, setTransfers, setBudgets, setBudgetCycle })
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) return ''
-    if (cycleMode?.startsWith('custom|')) {
-      const [, start, end] = cycleMode.split('|')
-      return start && end ? `custom-${start}-${end}` : `${monthValue}-monthly`
-    }
+    if (cycleMode?.startsWith('custom|')) { const [, start, end] = cycleMode.split('|'); return start && end ? `custom-${start}-${end}` : `${monthValue}-monthly` }
     if (cycleMode === 'fortnightly-1') return `${monthValue}-1-15`
     if (cycleMode === 'fortnightly-2') return `${monthValue}-16-end`
     return `${monthValue}-monthly`
   }
 
   const currentCycleKey = getCycleKey(selectedMonth, budgetCycle)
-  // Keep each pay period's budget allocation in its own bucket. The old implementation
-  // merged the two fortnightly buckets into the monthly bucket, which caused allocations
-  // to appear duplicated or to change when switching periods and then switching back.
-  const monthCategoryEntries = categoryEntriesByMonth[currentCycleKey] ?? []
-  const categoryEntries = categoryDefinitions.map((definition) => {
-    const matchingEntry = monthCategoryEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
-    return matchingEntry ? { ...definition, amount: Number(matchingEntry.amount ?? 0) } : { ...definition, amount: 0 }
+  const firstPeriodKey = `${selectedMonth}-1-15`
+  const secondPeriodKey = `${selectedMonth}-16-end`
+  const legacyMonthlyEntries = categoryEntriesByMonth[`${selectedMonth}-monthly`] ?? []
+  const firstPeriodEntries = categoryEntriesByMonth[firstPeriodKey] ?? []
+  const secondPeriodEntries = categoryEntriesByMonth[secondPeriodKey] ?? []
+  const hasDedicatedPayPeriodBudgets = firstPeriodEntries.length > 0 || secondPeriodEntries.length > 0
+
+  // A pay period is its own budget bucket. The monthly view is an aggregate of the
+  // two normal pay periods. Legacy monthly-only data is used only when no pay-period
+  // allocations exist, so existing data is not lost during the transition.
+  const getCombinedMonthlyEntries = () => categoryDefinitions.map((definition) => {
+    const first = firstPeriodEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
+    const second = secondPeriodEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
+    const legacy = legacyMonthlyEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
+    const amount = hasDedicatedPayPeriodBudgets
+      ? Number(first?.amount ?? 0) + Number(second?.amount ?? 0)
+      : Number(legacy?.amount ?? 0)
+    return { ...definition, amount }
   })
 
+  const categoryEntries = budgetCycle === 'monthly'
+    ? getCombinedMonthlyEntries()
+    : categoryDefinitions.map((definition) => {
+        const entries = categoryEntriesByMonth[currentCycleKey] ?? []
+        const matchingEntry = entries.find((entry) => entry.id === definition.id || entry.name === definition.name)
+        return matchingEntry ? { ...definition, amount: Number(matchingEntry.amount ?? 0) } : { ...definition, amount: 0 }
+      })
+
   const getCycleRange = (monthValue, cycleMode) => {
-    if (cycleMode?.startsWith('custom|')) {
-      const [, start, end] = cycleMode.split('|')
-      if (start && end) return { monthStart: start, monthEnd: end }
-    }
+    if (cycleMode?.startsWith('custom|')) { const [, start, end] = cycleMode.split('|'); if (start && end) return { monthStart: start, monthEnd: end } }
     if (!monthValue) return { monthStart: '', monthEnd: '' }
-    const year = Number(monthValue.slice(0, 4))
-    const monthIndex = Number(monthValue.slice(5, 7))
-    const lastDay = new Date(year, monthIndex, 0).getDate()
+    const year = Number(monthValue.slice(0, 4)); const monthIndex = Number(monthValue.slice(5, 7)); const lastDay = new Date(year, monthIndex, 0).getDate()
     if (cycleMode === 'fortnightly-1') return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-15` }
     if (cycleMode === 'fortnightly-2') return { monthStart: `${monthValue}-16`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
     return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
@@ -87,94 +90,69 @@ function App() {
   const currentAllocationTotal = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
 
   const changeAccountBalance = (accountId, delta) => {
-    const account = accountEntries.find((entry) => entry.id === accountId)
-    if (!account) return false
-    const nextAmount = Number(account.amount ?? 0) + Number(delta ?? 0)
-    if (!Number.isFinite(nextAmount) || nextAmount < 0) return false
-    setAccountEntries((previous) => previous.map((entry) => entry.id === accountId ? { ...entry, amount: nextAmount } : entry))
-    return true
+    const account = accountEntries.find((entry) => entry.id === accountId); if (!account) return false
+    const nextAmount = Number(account.amount ?? 0) + Number(delta ?? 0); if (!Number.isFinite(nextAmount) || nextAmount < 0) return false
+    setAccountEntries((previous) => previous.map((entry) => entry.id === accountId ? { ...entry, amount: nextAmount } : entry)); return true
   }
-
   function openAddForm(formType) { setActiveForm(formType) }
 
   function updateCategoryAmount(categoryId, amount) {
-    const safeAmount = Number(amount)
-    if (!Number.isFinite(safeAmount) || safeAmount < 0) return false
-    const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
-    if (!categoryDefinition) return false
-    setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name), { ...categoryDefinition, amount: safeAmount }] }))
+    const safeAmount = Number(amount); if (!Number.isFinite(safeAmount) || safeAmount < 0) return false
+    const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId); if (!categoryDefinition) return false
+    const targetKey = budgetCycle === 'monthly' ? `${selectedMonth}-monthly` : currentCycleKey
+    setCategoryEntriesByMonth(previous => ({ ...previous, [targetKey]: [...(previous[targetKey] ?? []).filter((entry) => entry.id !== categoryId && entry.name !== categoryDefinition.name), { ...categoryDefinition, amount: safeAmount }] }))
     return true
   }
 
   function reallocateBudget(fromCategoryId, toCategoryId, amount) {
     const safeAmount = Number(amount)
     if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId || !Number.isFinite(safeAmount) || safeAmount <= 0) { setToastMessage('Choose two different categories and enter a valid amount.'); return false }
-    const source = categoryEntries.find((entry) => entry.id === fromCategoryId)
-    const destination = categoryEntries.find((entry) => entry.id === toCategoryId)
+    if (budgetCycle === 'monthly') { setToastMessage('Select a pay period before moving dedicated budget. The Full Month view combines the pay-period budgets.'); return false }
+    const source = categoryEntries.find((entry) => entry.id === fromCategoryId); const destination = categoryEntries.find((entry) => entry.id === toCategoryId)
     if (!source || !destination) { setToastMessage('Both budget categories must exist.'); return false }
     const sourceSpent = filteredExpenseEntries.filter((expense) => expense.category === source.name).reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
     const sourceRemaining = Number(source.amount ?? 0) - sourceSpent
     if (sourceRemaining <= 0) { setToastMessage(`${source.name} has no remaining budget available to move.`); return false }
     if (safeAmount > sourceRemaining) { setToastMessage(`You can only move up to ₱${sourceRemaining.toFixed(2)} from ${source.name}.`); return false }
     setCategoryEntriesByMonth((previous) => {
-      const next = { ...previous }
-      const entries = [...(next[currentCycleKey] ?? [])]
-      const applyDelta = (category) => {
+      const next = { ...previous }; const entries = [...(next[currentCycleKey] ?? [])]
+      const applyDelta = (category, delta) => {
         const index = entries.findIndex((entry) => entry.id === category.id || entry.name === category.name)
-        if (index >= 0) entries[index] = { ...entries[index], amount: Number(entries[index].amount ?? 0) + (category.id === fromCategoryId ? -safeAmount : safeAmount) }
-        else entries.push({ ...category, amount: category.id === fromCategoryId ? -safeAmount : safeAmount })
+        if (index >= 0) entries[index] = { ...entries[index], amount: Number(entries[index].amount ?? 0) + delta }
+        else entries.push({ ...category, amount: delta })
       }
-      applyDelta(source); applyDelta(destination); next[currentCycleKey] = entries; return next
+      applyDelta(source, -safeAmount); applyDelta(destination, safeAmount); next[currentCycleKey] = entries; return next
     })
-    setToastMessage(`₱${safeAmount.toFixed(2)} moved from ${source.name} to ${destination.name}.`)
-    return true
+    setToastMessage(`₱${safeAmount.toFixed(2)} moved from ${source.name} to ${destination.name}.`); return true
   }
 
   function deleteCategoryEntry(categoryId) {
-    const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId)
-    if (!categoryDefinition) return false
+    const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId); if (!categoryDefinition) return false
     const linkedExpenses = expenseEntries.filter(entry => entry.category === categoryDefinition.name).length
     setCategoryDefinitions(previous => previous.filter(entry => entry.id !== categoryId))
     setCategoryEntriesByMonth(previous => { const next = { ...previous }; Object.keys(next).forEach(key => { next[key] = (next[key] ?? []).filter(entry => entry.id !== categoryId && entry.name !== categoryDefinition.name) }); return next })
     setBudgets(previous => previous.filter(budget => String(budget.categoryId ?? '') !== String(categoryId)))
     setExpenseEntries(previous => previous.map(entry => entry.category === categoryDefinition.name ? { ...entry, category: 'Uncategorized' } : entry))
     const movedMessage = linkedExpenses > 0 ? ' ' + linkedExpenses + ' existing expense' + (linkedExpenses === 1 ? '' : 's') + ' moved to Uncategorized.' : ''
-    setToastMessage(categoryDefinition.name + ' and its budget allocations were deleted.' + movedMessage)
-    return true
+    setToastMessage(categoryDefinition.name + ' and its budget allocations were deleted.' + movedMessage); return true
   }
 
   function updateExpenseEntry(expenseId, updatedEntry) {
-    const expenseToUpdate = expenseEntries.find(entry => entry.id === expenseId)
-    if (!expenseToUpdate) return false
+    const expenseToUpdate = expenseEntries.find(entry => entry.id === expenseId); if (!expenseToUpdate) return false
     const nextAmount = Number(updatedEntry.amount); const nextAccountId = updatedEntry.accountId || ''
     if (!nextAccountId || !Number.isFinite(nextAmount) || nextAmount <= 0) { setToastMessage('Please enter a valid expense amount and account.'); return false }
     const oldAmount = Number(expenseToUpdate.amount ?? 0); const oldAccountId = expenseToUpdate.accountId || ''
     const targetAccount = accountEntries.find(entry => entry.id === nextAccountId); const oldAccount = oldAccountId ? accountEntries.find(entry => entry.id === oldAccountId) : null
     if (!targetAccount) { setToastMessage('The selected account no longer exists.'); return false }
-    if (oldAccountId === nextAccountId) {
-      const difference = nextAmount - oldAmount
-      if (difference > 0 && Number(targetAccount.amount ?? 0) < difference) { setToastMessage(`Insufficient balance in ${targetAccount.name} for this expense change.`); return false }
-      changeAccountBalance(nextAccountId, -difference)
-    } else {
-      if (oldAccountId && !oldAccount) { setToastMessage('The original expense account no longer exists, so this expense cannot be moved safely.'); return false }
-      if (Number(targetAccount.amount ?? 0) < nextAmount) { setToastMessage(`Insufficient balance in ${targetAccount.name} for this expense change.`); return false }
-      if (oldAccountId && oldAmount > 0) changeAccountBalance(oldAccountId, oldAmount)
-      changeAccountBalance(nextAccountId, -nextAmount)
-    }
-    setExpenseEntries(previous => previous.map(entry => entry.id === expenseId ? { ...entry, ...updatedEntry, amount: nextAmount, accountId: nextAccountId } : entry))
-    setToastMessage(`Expense updated. ${targetAccount.name} now reflects the new amount.`); return true
+    if (oldAccountId === nextAccountId) { const difference = nextAmount - oldAmount; if (difference > 0 && Number(targetAccount.amount ?? 0) < difference) { setToastMessage(`Insufficient balance in ${targetAccount.name} for this expense change.`); return false } changeAccountBalance(nextAccountId, -difference) }
+    else { if (oldAccountId && !oldAccount) { setToastMessage('The original expense account no longer exists, so this expense cannot be moved safely.'); return false } if (Number(targetAccount.amount ?? 0) < nextAmount) { setToastMessage(`Insufficient balance in ${targetAccount.name} for this expense change.`); return false } if (oldAccountId && oldAmount > 0) changeAccountBalance(oldAccountId, oldAmount); changeAccountBalance(nextAccountId, -nextAmount) }
+    setExpenseEntries(previous => previous.map(entry => entry.id === expenseId ? { ...entry, ...updatedEntry, amount: nextAmount, accountId: nextAccountId } : entry)); setToastMessage(`Expense updated. ${targetAccount.name} now reflects the new amount.`); return true
   }
 
   function deleteExpenseEntry(expenseId) {
-    const expenseToDelete = expenseEntries.find(entry => entry.id === expenseId)
-    if (!expenseToDelete) return false
-    setExpenseEntries(previous => previous.filter(entry => entry.id !== expenseId))
-    const amount = Number(expenseToDelete.amount ?? 0)
-    if (expenseToDelete.accountId && Number.isFinite(amount) && amount > 0) {
-      const account = accountEntries.find(entry => entry.id === expenseToDelete.accountId)
-      if (account) { changeAccountBalance(expenseToDelete.accountId, amount); setToastMessage(`₱${amount.toFixed(2)} was returned to ${account.name}.`) }
-      else setToastMessage('Transaction deleted successfully.')
-    } else setToastMessage('Transaction deleted successfully.')
+    const expenseToDelete = expenseEntries.find(entry => entry.id === expenseId); if (!expenseToDelete) return false
+    setExpenseEntries(previous => previous.filter(entry => entry.id !== expenseId)); const amount = Number(expenseToDelete.amount ?? 0)
+    if (expenseToDelete.accountId && Number.isFinite(amount) && amount > 0) { const account = accountEntries.find(entry => entry.id === expenseToDelete.accountId); if (account) { changeAccountBalance(expenseToDelete.accountId, amount); setToastMessage(`₱${amount.toFixed(2)} was returned to ${account.name}.`) } else setToastMessage('Transaction deleted successfully.') } else setToastMessage('Transaction deleted successfully.')
     return true
   }
 
@@ -188,25 +166,18 @@ function App() {
 
   function updateIncomeEntry(incomeId, updatedEntry) {
     const incomeToUpdate = incomeEntries.find(entry => entry.id === incomeId); if (!incomeToUpdate) return false
-    const nextAmount = Number(updatedEntry.amount); const nextAccountId = updatedEntry.accountId || ''
-    if (!nextAccountId || !Number.isFinite(nextAmount) || nextAmount <= 0) return false
+    const nextAmount = Number(updatedEntry.amount); const nextAccountId = updatedEntry.accountId || ''; if (!nextAccountId || !Number.isFinite(nextAmount) || nextAmount <= 0) return false
     const oldAmount = Number(incomeToUpdate.amount ?? 0); const oldAccountId = incomeToUpdate.accountId
     if (oldAccountId && oldAccountId !== nextAccountId) { const oldAccount = accountEntries.find(entry => entry.id === oldAccountId); if (oldAccount && Number(oldAccount.amount ?? 0) < oldAmount) { setToastMessage(`Unable to move this income because ${oldAccount.name} does not have enough balance to reverse it.`); return false } }
     setIncomeEntries(previous => previous.map(entry => entry.id === incomeId ? { ...entry, ...updatedEntry, amount: nextAmount, accountId: nextAccountId } : entry))
-    if (oldAccountId === nextAccountId) changeAccountBalance(nextAccountId, nextAmount - oldAmount)
-    else { if (oldAccountId && oldAmount > 0) changeAccountBalance(oldAccountId, -oldAmount); changeAccountBalance(nextAccountId, nextAmount) }
+    if (oldAccountId === nextAccountId) changeAccountBalance(nextAccountId, nextAmount - oldAmount); else { if (oldAccountId && oldAmount > 0) changeAccountBalance(oldAccountId, -oldAmount); changeAccountBalance(nextAccountId, nextAmount) }
     return true
   }
 
   function deleteIncomeEntry(incomeId) {
     const incomeToDelete = incomeEntries.find(entry => entry.id === incomeId); if (!incomeToDelete) return false
     const amount = Number(incomeToDelete.amount ?? 0)
-    if (incomeToDelete.accountId && Number.isFinite(amount) && amount > 0) {
-      const account = accountEntries.find(entry => entry.id === incomeToDelete.accountId)
-      if (!account) { setToastMessage('Income cannot be deleted because its account no longer exists.'); return false }
-      if (Number(account.amount ?? 0) < amount) { setToastMessage(`Income cannot be deleted because ${account.name} no longer has enough balance to reverse it.`); return false }
-      changeAccountBalance(incomeToDelete.accountId, -amount); setToastMessage(`₱${amount.toFixed(2)} was removed from ${account.name}.`)
-    } else setToastMessage('Income deleted successfully.')
+    if (incomeToDelete.accountId && Number.isFinite(amount) && amount > 0) { const account = accountEntries.find(entry => entry.id === incomeToDelete.accountId); if (!account) { setToastMessage('Income cannot be deleted because its account no longer exists.'); return false } if (Number(account.amount ?? 0) < amount) { setToastMessage(`Income cannot be deleted because ${account.name} no longer has enough balance to reverse it.`); return false } changeAccountBalance(incomeToDelete.accountId, -amount); setToastMessage(`₱${amount.toFixed(2)} was removed from ${account.name}.`) } else setToastMessage('Income deleted successfully.')
     setIncomeEntries(previous => previous.filter(entry => entry.id !== incomeId)); return true
   }
 
@@ -244,8 +215,7 @@ function App() {
     event.preventDefault()
     if (activeForm === 'Expenses') {
       const expenseEntry = createExpenseFromForm(event); if (!expenseEntry) return
-      const account = accountEntries.find(entry => entry.id === expenseEntry.accountId)
-      if (!account) { setToastMessage('Please select an account.'); return }
+      const account = accountEntries.find(entry => entry.id === expenseEntry.accountId); if (!account) { setToastMessage('Please select an account.'); return }
       if (Number(account.amount ?? 0) < expenseEntry.amount) { setToastMessage(`Insufficient balance in ${account.name}.`); return }
       changeAccountBalance(expenseEntry.accountId, -expenseEntry.amount); setExpenseEntries(previous => [...previous, expenseEntry]); setActiveForm(null); setToastMessage(`₱${expenseEntry.amount.toFixed(2)} deducted from ${account.name}.`); return
     }
@@ -261,11 +231,13 @@ function App() {
       if (categoryRequest.selectedEntryId === 'new') {
         const newCategoryDefinition = { id: categoryRequest.entry.id, name: categoryRequest.entry.name }
         if (!categoryDefinitions.some(entry => entry.name === newCategoryDefinition.name)) setCategoryDefinitions(previous => [...previous, newCategoryDefinition])
-        setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: [...(previous[currentCycleKey] ?? []).filter((entry) => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name), { ...newCategoryDefinition, amount: categoryRequest.entry.amount }] }))
+        const targetKey = budgetCycle === 'monthly' ? `${selectedMonth}-monthly` : currentCycleKey
+        setCategoryEntriesByMonth(previous => ({ ...previous, [targetKey]: [...(previous[targetKey] ?? []).filter((entry) => entry.id !== newCategoryDefinition.id && entry.name !== newCategoryDefinition.name), { ...newCategoryDefinition, amount: categoryRequest.entry.amount }] }))
         setActiveForm(null); setToastMessage('Your category was saved successfully.')
       } else {
         const currentCategory = categoryDefinitions.find(entry => entry.id === categoryRequest.entry.id)
-        setCategoryEntriesByMonth(previous => ({ ...previous, [currentCycleKey]: (previous[currentCycleKey] ?? []).map(entry => entry.id === categoryRequest.entry.id || (currentCategory && entry.name === currentCategory.name) ? { ...entry, amount: Number(entry.amount ?? 0) + categoryRequest.entry.amount } : entry) }))
+        const targetKey = budgetCycle === 'monthly' ? `${selectedMonth}-monthly` : currentCycleKey
+        setCategoryEntriesByMonth(previous => ({ ...previous, [targetKey]: (previous[targetKey] ?? []).map(entry => entry.id === categoryRequest.entry.id || (currentCategory && entry.name === currentCategory.name) ? { ...entry, amount: Number(entry.amount ?? 0) + categoryRequest.entry.amount } : entry) }))
         setActiveForm(null); setToastMessage('Money was added to your category successfully.')
       }
       return
@@ -273,8 +245,7 @@ function App() {
     if (activeForm === 'Net-Worth') {
       const accountRequest = createNetWorthFromForm(event); if (!accountRequest) return
       if (accountRequest.selectedEntryId === 'new') {
-        const duplicate = accountEntries.some((entry) => entry.name.trim().toLowerCase() === accountRequest.entry.name.trim().toLowerCase())
-        if (duplicate) { setToastMessage('An account with that name already exists.'); return }
+        const duplicate = accountEntries.some((entry) => entry.name.trim().toLowerCase() === accountRequest.entry.name.trim().toLowerCase()); if (duplicate) { setToastMessage('An account with that name already exists.'); return }
         setAccountEntries(previous => [...previous, accountRequest.entry]); setActiveForm(null); setToastMessage('Your account was added successfully.')
       } else if (changeAccountBalance(accountRequest.entry.id, accountRequest.entry.amount)) { setActiveForm(null); setToastMessage(`₱${Number(accountRequest.entry.amount).toFixed(2)} was added to your account.`) }
       return
