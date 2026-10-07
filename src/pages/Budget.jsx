@@ -4,7 +4,7 @@ import { faXmark, faTrashCan, faArrowRightArrowLeft } from '@fortawesome/free-so
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateCategoryAmount, onDeleteCategoryEntry, onReallocateBudget }) => {
+const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateCategoryAmount, onDeleteCategoryEntry, onReallocateBudget, availableToAllocate = 0 }) => {
   const [editingCategory, setEditingCategory] = useState(null)
   const [pendingDeleteCategory, setPendingDeleteCategory] = useState(null)
   const [draftAmount, setDraftAmount] = useState('')
@@ -59,7 +59,9 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
 
   const targetEntries = categoryEntries.filter((entry) => entry.id !== reallocationSourceId)
   const selectedSource = categoryEntries.find((entry) => entry.id === reallocationSourceId)
+  const isUnallottedSource = reallocationSourceId === '__unallotted__'
   const selectedSourceRemaining = selectedSource ? Number(selectedSource.amount ?? 0) - getSpent(selectedSource) : 0
+  const selectedSourceAvailable = isUnallottedSource ? Math.max(0, Number(availableToAllocate ?? 0)) : Math.max(0, selectedSourceRemaining)
 
   const handleReallocation = () => {
     if (!onReallocateBudget) return
@@ -154,7 +156,7 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
                     event.stopPropagation()
                     openReallocation(entry)
                   }}
-                  disabled={!onReallocateBudget || (remaining <= 0 && categoryEntries.every((other) => other.id === entry.id || Number(other.amount ?? 0) - getSpent(other) <= 0))}
+                  disabled={!onReallocateBudget || (remaining <= 0 && Number(availableToAllocate ?? 0) <= 0 && categoryEntries.every((other) => other.id === entry.id || Number(other.amount ?? 0) - getSpent(other) <= 0))}
                 >
                   {remaining < 0 ? 'Cover overspending' : 'Move left budget'}
                 </button>
@@ -206,12 +208,15 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
                 <label className="add-form-label" htmlFor="budget-reallocation-source">From category</label>
                 <select id="budget-reallocation-source" value={reallocationSourceId} onChange={(event) => { setReallocationSourceId(event.target.value); if (event.target.value === reallocationTargetId) setReallocationTargetId('') }}>
                   <option value="">Select source category</option>
+                  {Number(availableToAllocate ?? 0) > 0 && reallocationTargetId !== '__unallotted__' && (
+                    <option value="__unallotted__">Unallotted money — ₱{Number(availableToAllocate).toFixed(2)} available</option>
+                  )}
                   {sourceEntries.map((entry) => {
                     const available = Number(entry.amount ?? 0) - getSpent(entry)
                     return <option key={entry.id} value={entry.id}>{entry.name} — ₱{available.toFixed(2)} left</option>
                   })}
                 </select>
-                <span className="budget-reallocation-helper">{selectedSource ? 'Available to move: ₱' + Math.max(0, selectedSourceRemaining).toFixed(2) : 'Only unused budget can be moved.'}</span>
+                <span className="budget-reallocation-helper">{isUnallottedSource ? 'Available to use: ₱' + Number(availableToAllocate).toFixed(2) : selectedSource ? 'Available to move: ₱' + Math.max(0, selectedSourceRemaining).toFixed(2) : 'Only unused budget can be moved.'}</span>
               </div>
               <div className="transfer-field">
                 <label className="add-form-label" htmlFor="budget-reallocation-target">To category</label>
@@ -228,18 +233,18 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
                 <label className="add-form-label" htmlFor="budget-reallocation-amount">Amount to move</label>
                 <div className="transfer-amount-input">
                   <span>₱</span>
-                  <input id="budget-reallocation-amount" type="number" min="0.01" max={Math.max(0, selectedSourceRemaining)} step="0.01" value={reallocationAmount} onChange={(event) => setReallocationAmount(event.target.value)} placeholder="0.00" />
+                  <input id="budget-reallocation-amount" type="number" min="0.01" max={selectedSourceAvailable} step="0.01" value={reallocationAmount} onChange={(event) => setReallocationAmount(event.target.value)} placeholder="0.00" />
                 </div>
               </div>
             </div>
             <div className="budget-reallocation-preview">
-              {selectedSource && reallocationTargetId && Number(reallocationAmount) > 0
-                ? '₱' + Number(reallocationAmount).toFixed(2) + ' will move from ' + selectedSource.name + ' to ' + (categoryEntries.find((entry) => entry.id === reallocationTargetId)?.name ?? 'the selected category') + '.'
+              {(selectedSource || isUnallottedSource) && reallocationTargetId && Number(reallocationAmount) > 0
+                ? '₱' + Number(reallocationAmount).toFixed(2) + (isUnallottedSource ? ' will be taken from unallotted money and added to ' : ' will move from ' + selectedSource.name + ' to ') + (categoryEntries.find((entry) => entry.id === reallocationTargetId)?.name ?? 'the selected category') + '.'
                 : 'Choose a source, destination, and amount.'}
             </div>
             <div className="budget-card-actions edit-action-row">
               <button type="button" className="budget-card-button budget-card-button-cancel" onClick={closeReallocation}><FontAwesomeIcon icon={faXmark} aria-hidden="true" />Cancel</button>
-              <button type="button" className="budget-card-button budget-card-button-save" onClick={handleReallocation} disabled={!reallocationSourceId || !reallocationTargetId || Number(reallocationAmount) <= 0 || Number(reallocationAmount) > selectedSourceRemaining}><FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />Move budget</button>
+              <button type="button" className="budget-card-button budget-card-button-save" onClick={handleReallocation} disabled={!reallocationSourceId || !reallocationTargetId || Number(reallocationAmount) <= 0 || Number(reallocationAmount) > selectedSourceAvailable}><FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />Move budget</button>
             </div>
           </div>
         </div>
