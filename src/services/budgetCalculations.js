@@ -118,11 +118,18 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     return sum + Number(expense.amount ?? 0)
   }, 0)
 
-  // Recalculate the recommended daily amount from the remaining budget and
-  // remaining days. This lets surplus increase the allowance and deficit
-  // decrease it while keeping today's actual spending separate.
-  const recommendedToday = !isBeforeStart && !isAfterEnd && remainingDays > 0 && remainingBudget >= 0
-    ? remainingBudget / remainingDays
+  // Lock today's recommendation at the start of the day.
+  // Today's expenses must NOT change today's allowance. The allowance is
+  // recalculated only when a new day begins, using the budget remaining
+  // before today's spending divided by the days remaining (including today).
+  const spentBeforeToday = expenses.reduce((sum, expense) => {
+    const expenseDate = parseLocalDate(expense.date)
+    if (!expenseDate || expenseDate < selectedStart || expenseDate >= currentDate || !matchesCategory(expense.category, categoryName, categoryId)) return sum
+    return sum + Number(expense.amount ?? 0)
+  }, 0)
+  const budgetAtStartOfToday = totalBudget - spentBeforeToday
+  const recommendedToday = !isBeforeStart && !isAfterEnd && remainingDays > 0
+    ? Math.max(0, budgetAtStartOfToday / remainingDays)
     : originalDailyAllowance
   const remainingToday = recommendedToday - todaysExpenses
   const futureDays = Math.max(remainingDays - 1, 0)
