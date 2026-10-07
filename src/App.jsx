@@ -106,14 +106,33 @@ function App() {
 
   function reallocateBudget(fromCategoryId, toCategoryId, amount) {
     const safeAmount = Number(amount)
-    if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId || !Number.isFinite(safeAmount) || safeAmount <= 0) { setToastMessage('Choose two different categories and enter a valid amount.'); return false }
+    const isUnallottedSource = fromCategoryId === '__unallotted__'
+    if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId || !Number.isFinite(safeAmount) || safeAmount <= 0) { setToastMessage('Choose a source and destination and enter a valid amount.'); return false }
     if (budgetCycle === 'monthly') { setToastMessage('Select a pay period before moving dedicated budget. The Full Month view combines the pay-period budgets.'); return false }
-    const source = categoryEntries.find((entry) => entry.id === fromCategoryId); const destination = categoryEntries.find((entry) => entry.id === toCategoryId)
-    if (!source || !destination) { setToastMessage('Both budget categories must exist.'); return false }
+    const destination = categoryEntries.find((entry) => entry.id === toCategoryId)
+    if (!destination) { setToastMessage('The destination budget category must exist.'); return false }
+
+    if (isUnallottedSource) {
+      const availableUnallotted = Math.max(0, monthlyIncomeTotal - currentAllocationTotal)
+      if (availableUnallotted <= 0) { setToastMessage('There is no unallotted money available for this pay period.'); return false }
+      if (safeAmount > availableUnallotted) { setToastMessage('You can only use up to ₱' + availableUnallotted.toFixed(2) + ' of unallotted money.'); return false }
+      setCategoryEntriesByMonth((previous) => {
+        const next = { ...previous }; const entries = [...(next[currentCycleKey] ?? [])]
+        const index = entries.findIndex((entry) => entry.id === destination.id || entry.name === destination.name)
+        if (index >= 0) entries[index] = { ...entries[index], amount: Number(entries[index].amount ?? 0) + safeAmount }
+        else entries.push({ ...destination, amount: safeAmount })
+        next[currentCycleKey] = entries; return next
+      })
+      setToastMessage('₱' + safeAmount.toFixed(2) + ' from unallotted money added to ' + destination.name + '.')
+      return true
+    }
+
+    const source = categoryEntries.find((entry) => entry.id === fromCategoryId)
+    if (!source) { setToastMessage('The source budget category must exist.'); return false }
     const sourceSpent = filteredExpenseEntries.filter((expense) => expense.category === source.name).reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
     const sourceRemaining = Number(source.amount ?? 0) - sourceSpent
-    if (sourceRemaining <= 0) { setToastMessage(`${source.name} has no remaining budget available to move.`); return false }
-    if (safeAmount > sourceRemaining) { setToastMessage(`You can only move up to ₱${sourceRemaining.toFixed(2)} from ${source.name}.`); return false }
+    if (sourceRemaining <= 0) { setToastMessage(source.name + ' has no remaining budget available to move.'); return false }
+    if (safeAmount > sourceRemaining) { setToastMessage('You can only move up to ₱' + sourceRemaining.toFixed(2) + ' from ' + source.name + '.'); return false }
     setCategoryEntriesByMonth((previous) => {
       const next = { ...previous }; const entries = [...(next[currentCycleKey] ?? [])]
       const applyDelta = (category, delta) => {
@@ -123,9 +142,8 @@ function App() {
       }
       applyDelta(source, -safeAmount); applyDelta(destination, safeAmount); next[currentCycleKey] = entries; return next
     })
-    setToastMessage(`₱${safeAmount.toFixed(2)} moved from ${source.name} to ${destination.name}.`); return true
+    setToastMessage('₱' + safeAmount.toFixed(2) + ' moved from ' + source.name + ' to ' + destination.name + '.'); return true
   }
-
   function deleteCategoryEntry(categoryId) {
     const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId); if (!categoryDefinition) return false
     const linkedExpenses = expenseEntries.filter(entry => entry.category === categoryDefinition.name).length
