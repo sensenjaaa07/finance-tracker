@@ -52,17 +52,40 @@ function App() {
   const firstPeriodEntries = categoryEntriesByMonth[firstPeriodKey] ?? []
   const secondPeriodEntries = categoryEntriesByMonth[secondPeriodKey] ?? []
   const hasDedicatedPayPeriodBudgets = firstPeriodEntries.length > 0 || secondPeriodEntries.length > 0
+  const monthStartDate = selectedMonth ? new Date(`${selectedMonth}-01T00:00:00`) : null
+  const monthEndDate = selectedMonth ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0, 23, 59, 59, 999) : null
+  const overlappingCustomPeriods = Object.entries(categoryEntriesByMonth).flatMap(([key, entries]) => {
+    const match = key.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/)
+    if (!match || !Array.isArray(entries) || !monthStartDate || !monthEndDate) return []
+    const periodStart = new Date(`${match[1]}T00:00:00`)
+    const periodEnd = new Date(`${match[2]}T23:59:59.999`)
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime()) || periodEnd < monthStartDate || periodStart > monthEndDate) return []
+    const overlapStart = new Date(Math.max(periodStart.getTime(), monthStartDate.getTime()))
+    const overlapEnd = new Date(Math.min(periodEnd.getTime(), monthEndDate.getTime()))
+    const overlapDays = Math.floor((new Date(overlapEnd.getFullYear(), overlapEnd.getMonth(), overlapEnd.getDate()) - new Date(overlapStart.getFullYear(), overlapStart.getMonth(), overlapStart.getDate())) / 86400000) + 1
+    const periodDays = Math.floor((new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()) - new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate())) / 86400000) + 1
+    return [{ entries, overlapRatio: periodDays > 0 ? overlapDays / periodDays : 0 }]
+  })
+  const hasCustomPeriodBudgets = overlappingCustomPeriods.length > 0
 
-  // A pay period is its own budget bucket. The monthly view is an aggregate of the
-  // two normal pay periods. Legacy monthly-only data is used only when no pay-period
-  // allocations exist, so existing data is not lost during the transition.
+  // Full Month is a calendar-month view, while each custom pay period remains its
+  // own allocation bucket. For a pay period spanning two months, the monthly view
+  // attributes the proportional share of its allocation to each month by covered days.
+  // Legacy monthly-only allocations remain the fallback when no period allocations exist.
   const getCombinedMonthlyEntries = () => categoryDefinitions.map((definition) => {
     const first = firstPeriodEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
     const second = secondPeriodEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
     const legacy = legacyMonthlyEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
-    const amount = hasDedicatedPayPeriodBudgets
-      ? Number(first?.amount ?? 0) + Number(second?.amount ?? 0)
-      : Number(legacy?.amount ?? 0)
+    const fixedPeriodAmount = Number(first?.amount ?? 0) + Number(second?.amount ?? 0)
+    const customPeriodAmount = overlappingCustomPeriods.reduce((total, period) => {
+      const matching = period.entries.find((entry) => entry.id === definition.id || entry.name === definition.name)
+      return total + Number(matching?.amount ?? 0) * period.overlapRatio
+    }, 0)
+    const amount = hasCustomPeriodBudgets
+      ? customPeriodAmount + (hasDedicatedPayPeriodBudgets ? fixedPeriodAmount : 0)
+      : hasDedicatedPayPeriodBudgets
+        ? fixedPeriodAmount
+        : Number(legacy?.amount ?? 0)
     return { ...definition, amount }
   })
 
