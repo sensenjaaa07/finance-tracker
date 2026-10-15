@@ -31,27 +31,22 @@ function App() {
     try { return localStorage.getItem('finance-tracker-selected-month') || new Date().toISOString().slice(0, 7) } catch { return new Date().toISOString().slice(0, 7) }
   })
   const [budgetCycle, setBudgetCycle] = useState('monthly')
+  const [payPeriods, setPayPeriods] = useState([])
   const [toastMessage, setToastMessage] = useState('')
 
-  const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, accounts: accountEntries, transfers, budgets, budgetCycle }
+  const cloudData = { expenses: expenseEntries, income: incomeEntries, categories: categoryDefinitions, categoryEntries: categoryEntriesByMonth, accounts: accountEntries, transfers, budgets, budgetCycle, payPeriods }
   useEffect(() => { try { window.localStorage.setItem('finance-tracker-selected-month', selectedMonth) } catch { /* Ignore storage errors. */ } }, [selectedMonth])
-  const { cloudReady, syncStatus, cloudError, retryCloudSync } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setAccountEntries, setTransfers, setBudgets, setBudgetCycle })
+  const { cloudReady, syncStatus, cloudError, retryCloudSync } = useCloudSync(cloudData, { setExpenseEntries, setIncomeEntries, setCategoryDefinitions, setCategoryEntriesByMonth, setAccountEntries, setTransfers, setBudgets, setBudgetCycle, setPayPeriods })
 
   const getCycleKey = (monthValue, cycleMode) => {
     if (!monthValue) return ''
     if (cycleMode?.startsWith('custom|')) { const [, start, end] = cycleMode.split('|'); return start && end ? `custom-${start}-${end}` : `${monthValue}-monthly` }
-    if (cycleMode === 'fortnightly-1') return `${monthValue}-1-15`
-    if (cycleMode === 'fortnightly-2') return `${monthValue}-16-end`
     return `${monthValue}-monthly`
   }
 
   const currentCycleKey = getCycleKey(selectedMonth, budgetCycle)
-  const firstPeriodKey = `${selectedMonth}-1-15`
-  const secondPeriodKey = `${selectedMonth}-16-end`
   const legacyMonthlyEntries = categoryEntriesByMonth[`${selectedMonth}-monthly`] ?? []
-  const firstPeriodEntries = categoryEntriesByMonth[firstPeriodKey] ?? []
-  const secondPeriodEntries = categoryEntriesByMonth[secondPeriodKey] ?? []
-  const hasDedicatedPayPeriodBudgets = firstPeriodEntries.length > 0 || secondPeriodEntries.length > 0
+  const hasDedicatedPayPeriodBudgets = Object.keys(categoryEntriesByMonth).some((key) => key.startsWith('custom-') && Array.isArray(categoryEntriesByMonth[key]) && categoryEntriesByMonth[key].length > 0)
   const monthStartDate = selectedMonth ? new Date(`${selectedMonth}-01T00:00:00`) : null
   const monthEndDate = selectedMonth ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0, 23, 59, 59, 999) : null
   const overlappingCustomPeriods = Object.entries(categoryEntriesByMonth).flatMap(([key, entries]) => {
@@ -73,10 +68,8 @@ function App() {
   // attributes the proportional share of its allocation to each month by covered days.
   // Legacy monthly-only allocations remain the fallback when no period allocations exist.
   const getCombinedMonthlyEntries = () => categoryDefinitions.map((definition) => {
-    const first = firstPeriodEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
-    const second = secondPeriodEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
     const legacy = legacyMonthlyEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
-    const fixedPeriodAmount = Number(first?.amount ?? 0) + Number(second?.amount ?? 0)
+    const fixedPeriodAmount = Object.entries(categoryEntriesByMonth).filter(([key]) => /^custom-\\d{4}-\\d{2}-\\d{2}-\\d{4}-\\d{2}-\\d{2}$/.test(key)).reduce((total, [, entries]) => { const matching = (entries ?? []).find((entry) => entry.id === definition.id || entry.name === definition.name); return total + Number(matching?.amount ?? 0) }, 0)
     const customPeriodAmount = overlappingCustomPeriods.reduce((total, period) => {
       const matching = period.entries.find((entry) => entry.id === definition.id || entry.name === definition.name)
       return total + Number(matching?.amount ?? 0) * period.overlapRatio
@@ -101,8 +94,6 @@ function App() {
     if (cycleMode?.startsWith('custom|')) { const [, start, end] = cycleMode.split('|'); if (start && end) return { monthStart: start, monthEnd: end } }
     if (!monthValue) return { monthStart: '', monthEnd: '' }
     const year = Number(monthValue.slice(0, 4)); const monthIndex = Number(monthValue.slice(5, 7)); const lastDay = new Date(year, monthIndex, 0).getDate()
-    if (cycleMode === 'fortnightly-1') return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-15` }
-    if (cycleMode === 'fortnightly-2') return { monthStart: `${monthValue}-16`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
     return { monthStart: `${monthValue}-01`, monthEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}` }
   }
 
@@ -302,7 +293,7 @@ function App() {
   if (!cloudReady) return <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}><div><h2>{syncStatus === 'offline' ? 'Unable to connect to cloud storage' : 'Loading your finance data…'}</h2><p>{cloudError || 'Reading the latest data from cloud storage.'}</p>{syncStatus === 'offline' && <button type="button" className="header-button" style={{ marginTop: '16px' }} onClick={retryCloudSync}>Retry connection</button>}</div></div>
 
   return <div className="app-container"><Navigation /><main className="content-container"><Routes>
-    <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} allIncomeEntries={incomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} />} />
+    <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} allIncomeEntries={incomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} />} />
     <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} onReallocateBudget={reallocateBudget} availableToAllocate={Math.max(0, monthlyIncomeTotal - currentAllocationTotal)} />} />
     <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} accounts={accountEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} onDeleteTransfer={deleteTransfer} />} />
     <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={accountEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
