@@ -48,7 +48,9 @@ function App() {
   const legacyMonthlyEntries = categoryEntriesByMonth[`${selectedMonth}-monthly`] ?? []
   const monthStartDate = selectedMonth ? new Date(`${selectedMonth}-01T00:00:00`) : null
   const monthEndDate = selectedMonth ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0, 23, 59, 59, 999) : null
+  const savedPayPeriodKeys = new Set(payPeriods.map((period) => `custom-${period.start}-${period.end}`))
   const overlappingCustomPeriods = Object.entries(categoryEntriesByMonth).flatMap(([key, entries]) => {
+    if (!savedPayPeriodKeys.has(key)) return []
     const match = key.match(/^custom-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/)
     if (!match || !Array.isArray(entries) || !monthStartDate || !monthEndDate) return []
     const periodStart = new Date(`${match[1]}T00:00:00`)
