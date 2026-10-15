@@ -4,7 +4,7 @@ import { faXmark, faTrashCan, faPenToSquare, faFilter, faReceipt, faArrowRightAr
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], transfers = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateExpenseEntry, onDeleteExpenseEntry, onDeleteTransfer }) => {
+const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], transfers = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods, onPayPeriodsChange, onUpdateExpenseEntry, onDeleteExpenseEntry, onDeleteTransfer }) => {
   const [editingExpense, setEditingExpense] = useState(null)
   const [pendingDeleteExpense, setPendingDeleteExpense] = useState(null)
   const [pendingDeleteTransfer, setPendingDeleteTransfer] = useState(null)
