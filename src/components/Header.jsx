@@ -1,7 +1,7 @@
 import '../assets/styles/Header.css'
 import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faXmark, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 
 const getMonthBounds = (monthValue) => {
   const fallback = new Date()
@@ -41,6 +41,13 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
     onBudgetCycleChange?.(value)
   }
 
+  const deleteSelectedPeriod = () => {
+    if (!selectedSavedPeriod || typeof onPayPeriodsChange !== 'function') return
+    if (!window.confirm(`Delete pay period ${periodLabel(selectedSavedPeriod)}? Its saved budget allocations will no longer be included in the Full month view.`)) return
+    onPayPeriodsChange(payPeriods.filter((period) => periodValue(period) !== budgetCycle))
+    onBudgetCycleChange?.('monthly')
+  }
+
   const savePeriod = (event) => {
     event.preventDefault()
     if (!draftStart || !draftEnd || draftStart > draftEnd) return
@@ -74,11 +81,14 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
               </div>
               <div className="header-period-control">
                 <label htmlFor="header-budget-cycle">Pay period</label>
-                <select id="header-budget-cycle" value={customPeriod ? budgetCycle : 'monthly'} onChange={(event) => handlePayPeriodChange(event.target.value)} aria-label="Pay period">
-                  <option value="monthly">Full month</option>
-                  {payPeriods.map((period) => <option key={periodValue(period)} value={periodValue(period)}>{periodLabel(period)}</option>)}
-                  <option value="set-period">＋ Set period…</option>
-                </select>
+                <div className="header-pay-period-select">
+                  <select id="header-budget-cycle" value={customPeriod ? budgetCycle : 'monthly'} onChange={(event) => handlePayPeriodChange(event.target.value)} aria-label="Pay period">
+                    <option value="monthly">Full month</option>
+                    {payPeriods.map((period) => <option key={periodValue(period)} value={periodValue(period)}>{periodLabel(period)}</option>)}
+                    <option value="set-period">＋ Set period…</option>
+                  </select>
+                  {selectedSavedPeriod && <button type="button" className="header-delete-period" onClick={deleteSelectedPeriod} title="Delete selected pay period" aria-label="Delete selected pay period"><FontAwesomeIcon icon={faTrashCan} aria-hidden="true" /></button>}
+                </div>
               </div>
             </div>
           )}
