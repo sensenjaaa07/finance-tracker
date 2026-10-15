@@ -46,7 +46,6 @@ function App() {
 
   const currentCycleKey = getCycleKey(selectedMonth, budgetCycle)
   const legacyMonthlyEntries = categoryEntriesByMonth[`${selectedMonth}-monthly`] ?? []
-  const hasDedicatedPayPeriodBudgets = Object.keys(categoryEntriesByMonth).some((key) => key.startsWith('custom-') && Array.isArray(categoryEntriesByMonth[key]) && categoryEntriesByMonth[key].length > 0)
   const monthStartDate = selectedMonth ? new Date(`${selectedMonth}-01T00:00:00`) : null
   const monthEndDate = selectedMonth ? new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0, 23, 59, 59, 999) : null
   const overlappingCustomPeriods = Object.entries(categoryEntriesByMonth).flatMap(([key, entries]) => {
@@ -69,16 +68,11 @@ function App() {
   // Legacy monthly-only allocations remain the fallback when no period allocations exist.
   const getCombinedMonthlyEntries = () => categoryDefinitions.map((definition) => {
     const legacy = legacyMonthlyEntries.find((entry) => entry.id === definition.id || entry.name === definition.name)
-    const fixedPeriodAmount = Object.entries(categoryEntriesByMonth).filter(([key]) => /^custom-\\d{4}-\\d{2}-\\d{2}-\\d{4}-\\d{2}-\\d{2}$/.test(key)).reduce((total, [, entries]) => { const matching = (entries ?? []).find((entry) => entry.id === definition.id || entry.name === definition.name); return total + Number(matching?.amount ?? 0) }, 0)
     const customPeriodAmount = overlappingCustomPeriods.reduce((total, period) => {
       const matching = period.entries.find((entry) => entry.id === definition.id || entry.name === definition.name)
       return total + Number(matching?.amount ?? 0) * period.overlapRatio
     }, 0)
-    const amount = hasCustomPeriodBudgets
-      ? customPeriodAmount + (hasDedicatedPayPeriodBudgets ? fixedPeriodAmount : 0)
-      : hasDedicatedPayPeriodBudgets
-        ? fixedPeriodAmount
-        : Number(legacy?.amount ?? 0)
+    const amount = hasCustomPeriodBudgets ? customPeriodAmount : Number(legacy?.amount ?? 0)
     return { ...definition, amount }
   })
 
@@ -294,9 +288,9 @@ function App() {
 
   return <div className="app-container"><Navigation /><main className="content-container"><Routes>
     <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} allIncomeEntries={incomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} />} />
-    <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} onReallocateBudget={reallocateBudget} availableToAllocate={Math.max(0, monthlyIncomeTotal - currentAllocationTotal)} />} />
-    <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} accounts={accountEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} onDeleteTransfer={deleteTransfer} />} />
-    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={accountEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
+    <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} onReallocateBudget={reallocateBudget} availableToAllocate={Math.max(0, monthlyIncomeTotal - currentAllocationTotal)} />} />
+    <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} categoryEntries={categoryEntries} accounts={accountEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} onDeleteTransfer={deleteTransfer} />} />
+    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={accountEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
     <Route path="/net-worth" element={<Accounts accounts={accountEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateAccount={updateNetWorthEntry} onAdjustAccountBalance={adjustAccountBalance} onDeleteAccount={deleteNetWorthEntry} onTransfer={handleTransfer} />} />
   </Routes></main>{renderCard()}{toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}</div>
 }
