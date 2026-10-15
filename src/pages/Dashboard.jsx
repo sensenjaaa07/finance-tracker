@@ -40,13 +40,20 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
     return true
   }, [rangeKey, selectedMonth])
 
+  const earliestAnalyticsMonth = useMemo(() => {
+    const dates = [...allExpenseEntries, ...allIncomeEntries].map((entry) => monthKeyFromDate(entry.date)).filter(Boolean).sort()
+    return dates[0] || selectedMonth
+  }, [allExpenseEntries, allIncomeEntries, selectedMonth])
+
   const rangeFilteredExpenses = useMemo(() => {
+    if (rangeKey === 'all') return allExpenseEntries
     if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allExpenseEntries.filter((entry) => matchesRange(entry.date))
     const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
     return allExpenseEntries.filter((entry) => monthKeys.includes(monthKeyFromDate(entry.date)))
   }, [allExpenseEntries, rangeKey, selectedMonth, matchesRange])
 
   const rangeFilteredIncome = useMemo(() => {
+    if (rangeKey === 'all') return allIncomeEntries
     if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') return allIncomeEntries.filter((entry) => matchesRange(entry.date))
     const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
     return allIncomeEntries.filter((entry) => monthKeys.includes(monthKeyFromDate(entry.date)))
@@ -74,8 +81,8 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
   ]
   const orderedMetricButtons = [...metricCards].sort((a, b) => metricOrder.indexOf(a.key) - metricOrder.indexOf(b.key))
 
-  const trendData = useMemo(() => buildTrendData({ incomeEntries: rangeFilteredIncome, expenseEntries: rangeFilteredExpenses, selectedMonth, rangeKey }), [rangeFilteredExpenses, rangeFilteredIncome, rangeKey, selectedMonth])
-  const categoryBreakdownData = useMemo(() => buildCategoryBreakdownData({ expenseEntries: rangeFilteredExpenses, selectedMonth, rangeKey }), [rangeFilteredExpenses, rangeKey, selectedMonth])
+  const trendData = useMemo(() => buildTrendData({ incomeEntries: rangeFilteredIncome, expenseEntries: rangeFilteredExpenses, selectedMonth, rangeKey, earliestMonth: earliestAnalyticsMonth }), [rangeFilteredExpenses, rangeFilteredIncome, rangeKey, selectedMonth, earliestAnalyticsMonth])
+  const categoryBreakdownData = useMemo(() => buildCategoryBreakdownData({ expenseEntries: rangeFilteredExpenses, selectedMonth, rangeKey, earliestMonth: earliestAnalyticsMonth }), [rangeFilteredExpenses, rangeKey, selectedMonth, earliestAnalyticsMonth])
   const totalActualExpense = trendData.reduce((total, entry) => total + Number(entry.actualExpenses ?? 0), 0)
   const totalForecastExpense = trendData.reduce((total, entry) => total + Number(entry.forecastExpenses ?? 0), 0)
 
@@ -114,7 +121,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
       <div className="dashboard-filter-bar">
         <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={resolvedSelectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{resolvedSelectedCategory === 'all' ? 'All categories' : resolvedSelectedCategory}</strong></span></div>
         <div className="dashboard-filter-group dashboard-visibility-group"><span>Visible metrics</span><div className="dashboard-visibility-toggle-group">{orderedMetricButtons.map((metric) => <button key={metric.key} type="button" className={`metric-toggle ${visibleMetrics[metric.key] ? 'is-visible' : 'is-hidden'}`} onClick={() => toggleMetric(metric.key)}>{metric.label}</button>)}</div></div>
-        <div className="dashboard-filter-group dashboard-range-group"><label htmlFor="dashboard-range-filter">Analytics range</label><select id="dashboard-range-filter" value={rangeKey} onChange={(event) => setRangeKey(event.target.value)}><option value="month">This month</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="12m">Last 12 months</option><option value="year">This year</option></select></div>
+        <div className="dashboard-filter-group dashboard-range-group"><label htmlFor="dashboard-range-filter">Analytics range</label><select id="dashboard-range-filter" value={rangeKey} onChange={(event) => setRangeKey(event.target.value)}><option value="month">This month</option><option value="3m">Last 3 months</option><option value="6m">Last 6 months</option><option value="12m">Last 12 months</option><option value="year">This year</option><option value="all">All time</option></select></div>
       </div>
       <div className="dashboard-summary">{metricCards.filter((metric) => visibleMetrics[metric.key]).sort((a, b) => metricOrder.indexOf(a.key) - metricOrder.indexOf(b.key)).map((metric) => <div className="summary-card" key={metric.key}><p>{metric.label}</p><strong className={metric.negative ? 'amount-negative' : ''}>{metric.value}</strong></div>)}</div>
 
