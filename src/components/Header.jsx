@@ -1,8 +1,7 @@
 import '../assets/styles/Header.css'
+import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus } from '@fortawesome/free-solid-svg-icons'
-
-const VALID_PAY_PERIODS = ['monthly', 'fortnightly-1', 'fortnightly-2']
+import { faPlus, faXmark } from '@fortawesome/free-solid-svg-icons'
 
 const getMonthBounds = (monthValue) => {
   const fallback = new Date()
@@ -18,26 +17,38 @@ const parseCustomPeriod = (value) => {
   return start && end ? { start, end } : null
 }
 
-const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
+const periodValue = (period) => `custom|${period.start}|${period.end}`
+const periodLabel = (period) => {
+  const format = (value) => new Date(`${value}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${format(period.start)} – ${format(period.end)}`
+}
+
+const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods = [], onPayPeriodsChange }) => {
   const customPeriod = parseCustomPeriod(budgetCycle)
-  const displayedPayPeriod = customPeriod ? 'custom' : (VALID_PAY_PERIODS.includes(budgetCycle) ? budgetCycle : 'monthly')
+  const [periodModalOpen, setPeriodModalOpen] = useState(false)
+  const [draftStart, setDraftStart] = useState(customPeriod?.start || getMonthBounds(monthValue).start)
+  const [draftEnd, setDraftEnd] = useState(customPeriod?.end || getMonthBounds(monthValue).end)
+  const selectedSavedPeriod = payPeriods.find((period) => periodValue(period) === budgetCycle)
 
   const handlePayPeriodChange = (value) => {
-    if (value === 'custom') {
+    if (value === 'set-period') {
       const bounds = customPeriod || getMonthBounds(monthValue)
-      onBudgetCycleChange?.(`custom|${bounds.start}|${bounds.end}`)
+      setDraftStart(bounds.start)
+      setDraftEnd(bounds.end)
+      setPeriodModalOpen(true)
       return
     }
     onBudgetCycleChange?.(value)
   }
 
-  const handleCustomDateChange = (field, value) => {
-    const next = { ...(customPeriod || getMonthBounds(monthValue)), [field]: value }
-    if (next.start && next.end && next.start <= next.end) {
-      onBudgetCycleChange?.(`custom|${next.start}|${next.end}`)
-    } else if (next.start && !next.end) {
-      onBudgetCycleChange?.(`custom|${next.start}|${next.start}`)
-    }
+  const savePeriod = (event) => {
+    event.preventDefault()
+    if (!draftStart || !draftEnd || draftStart > draftEnd) return
+    const period = { start: draftStart, end: draftEnd }
+    const existing = payPeriods.filter((item) => !(item.start === period.start && item.end === period.end))
+    onPayPeriodsChange?.([...existing, period])
+    onBudgetCycleChange?.(periodValue(period))
+    setPeriodModalOpen(false)
   }
 
   function renderButton() {
@@ -51,41 +62,52 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
   }
 
   return (
-    <header className="header-container">
-      <div className="header-title"><p className="header-eyebrow">Your finances</p><h1>{pageTitle}</h1></div>
-      <div className="header-actions">
-        {showMonthFilter && (
-          <div className="header-period-filter">
-            <div className="header-period-control">
-              <label htmlFor="header-month-filter">Month</label>
-              <input id="header-month-filter" type="month" value={monthValue} onChange={(event) => onMonthChange?.(event.target.value)} aria-label="Select month" />
+    <>
+      <header className="header-container">
+        <div className="header-title"><p className="header-eyebrow">Your finances</p><h1>{pageTitle}</h1></div>
+        <div className="header-actions">
+          {showMonthFilter && (
+            <div className="header-period-filter">
+              <div className="header-period-control">
+                <label htmlFor="header-month-filter">Month</label>
+                <input id="header-month-filter" type="month" value={monthValue} onChange={(event) => onMonthChange?.(event.target.value)} aria-label="Select month" />
+              </div>
+              <div className="header-period-control">
+                <label htmlFor="header-budget-cycle">Pay period</label>
+                <select id="header-budget-cycle" value={customPeriod ? budgetCycle : 'monthly'} onChange={(event) => handlePayPeriodChange(event.target.value)} aria-label="Pay period">
+                  <option value="monthly">Full month</option>
+                  {payPeriods.map((period) => <option key={periodValue(period)} value={periodValue(period)}>{periodLabel(period)}</option>)}
+                  <option value="set-period">＋ Set period…</option>
+                </select>
+              </div>
             </div>
-            <div className="header-period-control">
-              <label htmlFor="header-budget-cycle">Pay period</label>
-              <select id="header-budget-cycle" value={displayedPayPeriod} onChange={(event) => handlePayPeriodChange(event.target.value)} aria-label="Pay period">
-                <option value="monthly">Full month</option>
-                <option value="fortnightly-1">1st–15th</option>
-                <option value="fortnightly-2">16th–end</option>
-                <option value="custom">Custom dates</option>
-              </select>
+          )}
+          {renderButton()}
+        </div>
+      </header>
+      {periodModalOpen && (
+        <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="set-pay-period-title">
+          <form className="add-form edit-form" onSubmit={savePeriod}>
+            <div className="add-form-header">
+              <div><p className="header-eyebrow">Budget settings</p><h3 id="set-pay-period-title">Set pay period</h3></div>
+              <button className="add-form-close" type="button" onClick={() => setPeriodModalOpen(false)} aria-label="Close set pay period"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
             </div>
-            {displayedPayPeriod === 'custom' && customPeriod && (
-              <>
-                <div className="header-period-control">
-                  <label htmlFor="header-pay-period-start">Start</label>
-                  <input id="header-pay-period-start" type="date" value={customPeriod.start} onChange={(event) => handleCustomDateChange('start', event.target.value)} aria-label="Pay period start date" />
-                </div>
-                <div className="header-period-control">
-                  <label htmlFor="header-pay-period-end">End</label>
-                  <input id="header-pay-period-end" type="date" min={customPeriod.start || undefined} value={customPeriod.end} onChange={(event) => handleCustomDateChange('end', event.target.value)} aria-label="Pay period end date" />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        {renderButton()}
-      </div>
-    </header>
+            <p>Choose the exact dates covered by this paycheck. Saved periods remain available in the Pay period selector, and each period keeps its own budget allocations.</p>
+            <div className="add-form-fields">
+              <label className="add-form-label" htmlFor="pay-period-start">Period starts</label>
+              <input id="pay-period-start" type="date" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} required />
+              <label className="add-form-label" htmlFor="pay-period-end">Period ends</label>
+              <input id="pay-period-end" type="date" min={draftStart || undefined} value={draftEnd} onChange={(event) => setDraftEnd(event.target.value)} required />
+              {draftStart && draftEnd && draftStart > draftEnd && <p className="amount-negative">The end date must be on or after the start date.</p>}
+            </div>
+            <div className="budget-card-actions edit-action-row">
+              <button type="button" className="budget-card-button budget-card-button-cancel" onClick={() => setPeriodModalOpen(false)}>Cancel</button>
+              <button type="submit" className="budget-card-button budget-card-button-save" disabled={!draftStart || !draftEnd || draftStart > draftEnd}>Save pay period</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
   )
 }
 
