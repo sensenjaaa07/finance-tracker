@@ -43,8 +43,14 @@ const applyData = (data, setters) => {
   setters.setAccountEntries(restoreAccounts(restored))
   setters.setTransfers(Array.isArray(restored?.transfers) ? restored.transfers : [])
   setters.setBudgets(Array.isArray(restored?.budgets) ? restored.budgets : [])
-  setters.setBudgetCycle(typeof restored?.budgetCycle === 'string' ? restored.budgetCycle : 'monthly')
-  setters.setPayPeriods(Array.isArray(restored?.payPeriods) ? restored.payPeriods : [])
+  const restoredCycle = typeof restored?.budgetCycle === 'string' ? restored.budgetCycle : 'monthly'
+  const restoredPeriods = Array.isArray(restored?.payPeriods) ? restored.payPeriods : []
+  const customMatch = restoredCycle.match(/^custom\|(\d{4}-\d{2}-\d{2})\|(\d{4}-\d{2}-\d{2})$/)
+  const migratedPeriods = customMatch && !restoredPeriods.some((period) => period.start === customMatch[1] && period.end === customMatch[2])
+    ? [...restoredPeriods, { start: customMatch[1], end: customMatch[2] }]
+    : restoredPeriods
+  setters.setBudgetCycle(restoredCycle === 'fortnightly-1' || restoredCycle === 'fortnightly-2' ? 'monthly' : restoredCycle)
+  setters.setPayPeriods(migratedPeriods)
 }
 
 const readCloudData = async () => {
