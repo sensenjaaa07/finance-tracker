@@ -4,12 +4,13 @@ import { faXmark, faTrashCan, faPenToSquare, faFilter, faReceipt, faArrowRightAr
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], transfers = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods, onPayPeriodsChange, onUpdateExpenseEntry, onDeleteExpenseEntry, onDeleteTransfer }) => {
+const Transactions = ({ expenseEntries = [], allExpenseEntries = expenseEntries, categoryEntries = [], accounts = [], transfers = [], allTransfers = transfers, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods, onPayPeriodsChange, onUpdateExpenseEntry, onDeleteExpenseEntry, onDeleteTransfer }) => {
   const [editingExpense, setEditingExpense] = useState(null)
   const [pendingDeleteExpense, setPendingDeleteExpense] = useState(null)
   const [pendingDeleteTransfer, setPendingDeleteTransfer] = useState(null)
   const [selectedTransaction, setSelectedTransaction] = useState(null)
   const [draft, setDraft] = useState({ title: '', category: '', amount: '', date: '', accountId: '' })
+  const [transactionScope, setTransactionScope] = useState('selected')
   const [typeFilter, setTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [accountFilter, setAccountFilter] = useState('all')
@@ -22,7 +23,10 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
 
   const getAccountName = useCallback((expense) => accounts.find(account => account.id === expense.accountId)?.name || expense.account || 'Account not recorded', [accounts])
 
-  const filteredExpenses = useMemo(() => expenseEntries.filter(expense => {
+  const scopedExpenses = transactionScope === 'all' ? allExpenseEntries : expenseEntries
+  const scopedTransfers = transactionScope === 'all' ? allTransfers : transfers
+
+  const filteredExpenses = useMemo(() => scopedExpenses.filter(expense => {
     if (typeFilter === 'transfer') return false
     if (categoryFilter !== 'all' && (expense.category || 'Uncategorized') !== categoryFilter) return false
     const accountName = getAccountName(expense)
@@ -32,9 +36,9 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
       if (!`${expense.title} ${expense.category} ${accountName}`.toLowerCase().includes(query)) return false
     }
     return true
-  }), [expenseEntries, getAccountName, typeFilter, categoryFilter, accountFilter, searchFilter])
+  }), [scopedExpenses, getAccountName, typeFilter, categoryFilter, accountFilter, searchFilter])
 
-  const filteredTransfers = useMemo(() => transfers.filter(transfer => {
+  const filteredTransfers = useMemo(() => scopedTransfers.filter(transfer => {
     if (typeFilter === 'expense') return false
     if (accountFilter !== 'all' && transfer.fromAccount !== accountFilter && transfer.toAccount !== accountFilter) return false
     if (searchFilter.trim()) {
@@ -42,7 +46,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
       if (!`${transfer.fromAccount} ${transfer.toAccount} account transfer`.toLowerCase().includes(query)) return false
     }
     return true
-  }), [transfers, typeFilter, accountFilter, searchFilter])
+  }), [scopedTransfers, typeFilter, accountFilter, searchFilter])
 
   const sortedTransactions = useMemo(() => {
     const rows = [
@@ -74,6 +78,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
   const sortIndicator = (field) => sortField === field ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ''
 
   const clearFilters = () => {
+    setTransactionScope('selected')
     setTypeFilter('all')
     setCategoryFilter('all')
     setAccountFilter('all')
