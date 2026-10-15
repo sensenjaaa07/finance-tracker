@@ -186,7 +186,7 @@ const Transactions = ({ expenseEntries, categoryEntries = [], accounts = [], tra
           .transaction-details-actions { flex-direction:column; }
         }
       `}</style>
-      <Header pageTitle="Transactions" onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} />
+      <Header pageTitle="Transactions" onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} payPeriods={payPeriods} onPayPeriodsChange={onPayPeriodsChange} />
 
       <div className="transactions-filter-bar">
         <div className="transactions-filter-header">
