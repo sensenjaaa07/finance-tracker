@@ -4,7 +4,7 @@ import { faXmark, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateIncomeEntry, onDeleteIncomeEntry }) => {
+const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods, onPayPeriodsChange, onUpdateIncomeEntry, onDeleteIncomeEntry }) => {
   const [editingIncome, setEditingIncome] = useState(null)
   const [pendingDeleteIncome, setPendingDeleteIncome] = useState(null)
   const [draft, setDraft] = useState({ title: '', amount: '', date: '', accountId: '' })
@@ -53,6 +53,8 @@ const Income = ({ incomeEntries, accounts = [], onOpenAddForm, selectedMonth, on
         onMonthChange={onMonthChange}
         budgetCycle={budgetCycle}
         onBudgetCycleChange={onBudgetCycleChange}
+        payPeriods={payPeriods}
+        onPayPeriodsChange={onPayPeriodsChange}
       />
       <div className="dashboard-summary">
         <div className="summary-card">
