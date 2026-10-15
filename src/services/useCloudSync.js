@@ -9,6 +9,7 @@ const EMPTY_DATA = {
   transfers: [],
   budgets: [],
   budgetCycle: 'monthly',
+  payPeriods: [],
 }
 
 const restoreDates = (value, key = '') => {
@@ -43,6 +44,7 @@ const applyData = (data, setters) => {
   setters.setTransfers(Array.isArray(restored?.transfers) ? restored.transfers : [])
   setters.setBudgets(Array.isArray(restored?.budgets) ? restored.budgets : [])
   setters.setBudgetCycle(typeof restored?.budgetCycle === 'string' ? restored.budgetCycle : 'monthly')
+  setters.setPayPeriods(Array.isArray(restored?.payPeriods) ? restored.payPeriods : [])
 }
 
 const readCloudData = async () => {
@@ -117,7 +119,7 @@ export default function useCloudSync(data, setters) {
       }
     }, 150)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.accounts, data.transfers, data.budgets, data.budgetCycle])
+  }, [cloudReady, data.expenses, data.income, data.categories, data.categoryEntries, data.accounts, data.transfers, data.budgets, data.budgetCycle, data.payPeriods])
 
   const retryCloudSync = () => {
     setCloudReady(false)
