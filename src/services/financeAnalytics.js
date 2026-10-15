@@ -51,7 +51,7 @@ export const formatMonthLabel = (monthKey) => {
   return monthFormatter.format(new Date(year, month - 1, 1))
 }
 
-export const buildMonthKeysForRange = (selectedMonth, rangeKey) => {
+export const buildMonthKeysForRange = (selectedMonth, rangeKey, earliestMonth = selectedMonth) => {
   if (!selectedMonth) {
     return []
   }
@@ -62,6 +62,16 @@ export const buildMonthKeysForRange = (selectedMonth, rangeKey) => {
 
   const [year, month] = selectedMonth.split('-').map(Number)
   const anchor = new Date(year, month - 1, 1)
+
+  if (rangeKey === 'all') {
+    const [startYear, startMonth] = (earliestMonth || selectedMonth).split('-').map(Number)
+    const start = new Date(startYear, startMonth - 1, 1)
+    const monthCount = Math.max(1, (anchor.getFullYear() - start.getFullYear()) * 12 + anchor.getMonth() - start.getMonth() + 1)
+    return Array.from({ length: monthCount }, (_, index) => {
+      const current = new Date(start.getFullYear(), start.getMonth() + index, 1)
+      return `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
+    })
+  }
 
   let monthCount = 6
 
@@ -255,7 +265,7 @@ export const calculateExpenseForecast = (expenseEntries = [], monthKeys = [], se
   return forecastByMonth
 }
 
-export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], selectedMonth, rangeKey = '6m' }) => {
+export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], selectedMonth, rangeKey = '6m', earliestMonth = selectedMonth }) => {
   if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') {
     const dayKeys = buildDayKeysForSelectedPeriod(selectedMonth, rangeKey)
 
@@ -305,7 +315,7 @@ export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], select
     })
   }
 
-  const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
+  const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey, earliestMonth)
   const incomeByMonth = aggregateEntriesByMonth(incomeEntries)
   const expenseByMonth = aggregateEntriesByMonth(expenseEntries)
   const forecastByMonth = calculateExpenseForecast(expenseEntries, monthKeys, selectedMonth, rangeKey)
@@ -324,8 +334,8 @@ export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], select
   })
 }
 
-export const buildCategoryBreakdownData = ({ expenseEntries = [], selectedMonth, rangeKey = '6m' }) => {
-  const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey)
+export const buildCategoryBreakdownData = ({ expenseEntries = [], selectedMonth, rangeKey = '6m', earliestMonth = selectedMonth }) => {
+  const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey, earliestMonth)
   const relevantExpenses = expenseEntries.filter((entry) => {
     if (rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2' || rangeKey === 'month') {
       return matchesSelectedPeriod(entry.date, selectedMonth, rangeKey)
