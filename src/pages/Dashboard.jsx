@@ -6,7 +6,7 @@ import { buildCategoryBreakdownData, buildMonthKeysForRange, buildTrendData, for
 import { calculateCategoryBudgetMetrics, getActiveBudgetForCategory, getBudgetRangeForPeriod } from '../services/budgetCalculations.js'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseEntries, allIncomeEntries = incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange }) => {
+const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseEntries, allIncomeEntries = incomeEntries, categoryEntries, budgets = [], onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods, onPayPeriodsChange }) => {
   const [selectedCategory, setSelectedCategory] = useState(() => {
     try {
       return localStorage.getItem('finance-tracker-selected-category') || 'all'
@@ -110,7 +110,7 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
 
   return (
     <section>
-      <Header pageTitle={"Overview"} onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} />
+      <Header pageTitle={"Overview"} onOpenAddForm={onOpenAddForm} showMonthFilter monthValue={selectedMonth} onMonthChange={onMonthChange} budgetCycle={budgetCycle} onBudgetCycleChange={onBudgetCycleChange} payPeriods={payPeriods} onPayPeriodsChange={onPayPeriodsChange} />
       <div className="dashboard-filter-bar">
         <div className="dashboard-filter-group"><label htmlFor="dashboard-category-filter">View</label><select id="dashboard-category-filter" value={resolvedSelectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}><option value="all">All categories</option><option value="Uncategorized">Uncategorized</option>{categoryEntries.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="dashboard-selected-view">Selected: <strong>{resolvedSelectedCategory === 'all' ? 'All categories' : resolvedSelectedCategory}</strong></span></div>
         <div className="dashboard-filter-group dashboard-visibility-group"><span>Visible metrics</span><div className="dashboard-visibility-toggle-group">{orderedMetricButtons.map((metric) => <button key={metric.key} type="button" className={`metric-toggle ${visibleMetrics[metric.key] ? 'is-visible' : 'is-hidden'}`} onClick={() => toggleMetric(metric.key)}>{metric.label}</button>)}</div></div>
