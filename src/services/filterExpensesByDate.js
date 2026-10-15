@@ -1,45 +1,30 @@
 function toDateOnly(dateValue) {
   if (!dateValue) return null
 
+  // Parse YYYY-MM-DD as a local calendar date to avoid timezone shifts.
+  if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    const [year, month, day] = dateValue.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
   const date = new Date(dateValue)
   if (Number.isNaN(date.getTime())) return null
-
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-function getCustomPayPeriod() {
-  if (typeof window === 'undefined') return null
+function filterExpensesByDate(entries, startDate, endDate) {
+  if (!Array.isArray(entries)) return []
 
-  try {
-    const saved = JSON.parse(window.localStorage.getItem('finance-tracker-custom-pay-period') || 'null')
-    if (!saved?.start || !saved?.end || saved.start > saved.end) return null
-    return saved
-  } catch {
-    return null
-  }
-}
+  // The caller owns the active date range. Do not override it with a global
+  // localStorage pay period, because that makes every page use the same range.
+  const normalizedStart = toDateOnly(startDate)
+  const normalizedEnd = toDateOnly(endDate)
 
-function filterExpensesByDate(expenses, startDate, endDate) {
-  if (!Array.isArray(expenses)) {
-    return []
-  }
-
-  const customPayPeriod = getCustomPayPeriod()
-  const normalizedStart = toDateOnly(customPayPeriod?.start || startDate)
-  const normalizedEnd = toDateOnly(customPayPeriod?.end || endDate)
-
-  return expenses.filter((expense) => {
-    const expenseDate = toDateOnly(expense.date)
-    if (!expenseDate) return false
-
-    if (normalizedStart && expenseDate < normalizedStart) {
-      return false
-    }
-
-    if (normalizedEnd && expenseDate > normalizedEnd) {
-      return false
-    }
-
+  return entries.filter((entry) => {
+    const entryDate = toDateOnly(entry.date)
+    if (!entryDate) return false
+    if (normalizedStart && entryDate < normalizedStart) return false
+    if (normalizedEnd && entryDate > normalizedEnd) return false
     return true
   })
 }
