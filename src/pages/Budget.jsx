@@ -4,7 +4,7 @@ import { faXmark, faTrashCan, faArrowRightArrowLeft } from '@fortawesome/free-so
 import Header from '../components/Header'
 import '../assets/styles/EntryList.css'
 
-const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, onUpdateCategoryAmount, onDeleteCategoryEntry, onReallocateBudget, availableToAllocate = 0 }) => {
+const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods, onPayPeriodsChange, onUpdateCategoryAmount, onDeleteCategoryEntry, onReallocateBudget, availableToAllocate = 0 }) => {
   const [editingCategory, setEditingCategory] = useState(null)
   const [pendingDeleteCategory, setPendingDeleteCategory] = useState(null)
   const [draftAmount, setDraftAmount] = useState('')
@@ -88,6 +88,8 @@ const Budget = ({ categoryEntries, expenseEntries, onOpenAddForm, selectedMonth,
         onMonthChange={onMonthChange}
         budgetCycle={budgetCycle}
         onBudgetCycleChange={onBudgetCycleChange}
+        payPeriods={payPeriods}
+        onPayPeriodsChange={onPayPeriodsChange}
       />
       <div className="entry-list budget-list">
         {categoryEntries.length === 0 ? (
