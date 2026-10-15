@@ -50,3 +50,15 @@ header.header-container {
   height: 0.9rem;
   flex: 0 0 auto;
 }
+
+
+.header-pay-period-select { display:flex; align-items:stretch; gap:6px; }
+.header-pay-period-select select { min-width:125px; flex:1; }
+.header-delete-period { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; padding:var(--spacing-sm); border:1px solid #dc2626; border-radius:var(--radius-md); background:var(--bg-card); color:#b91c1c; cursor:pointer; }
+.header-delete-period:hover { background:#fef2f2; }
+.header-delete-period:focus-visible { outline:3px solid rgba(220,38,38,.25); outline-offset:2px; }
+.header-delete-period svg { width:1rem; height:1rem; }
+@media (max-width:900px) {
+  .header-pay-period-select { width:100%; }
+  .header-pay-period-select select { width:100%; min-width:0; }
+}
