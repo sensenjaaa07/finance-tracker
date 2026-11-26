@@ -112,11 +112,12 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
   const remainingDays = isBeforeStart ? totalDays : isAfterEnd ? 0 : numberOfDaysInclusive(currentDate, selectedEnd)
   const originalDailyAllowance = totalDays > 0 ? totalBudget / totalDays : 0
 
-  const todaysExpenses = expenses.reduce((sum, expense) => {
+  const isTodayInPeriod = !isBeforeStart && !isAfterEnd
+  const todaysExpenses = isTodayInPeriod ? expenses.reduce((sum, expense) => {
     const expenseDate = parseLocalDate(expense.date)
     if (!expenseDate || expenseDate.getTime() !== currentDate.getTime() || !matchesCategory(expense.category, categoryName, categoryId)) return sum
     return sum + Number(expense.amount ?? 0)
-  }, 0)
+  }, 0) : 0
 
   // Lock today's recommendation at the start of the day.
   // Today's expenses must NOT change today's allowance. The allowance is
@@ -128,9 +129,9 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     return sum + Number(expense.amount ?? 0)
   }, 0)
   const budgetAtStartOfToday = totalBudget - spentBeforeToday
-  const recommendedToday = !isBeforeStart && !isAfterEnd && remainingDays > 0
+  const recommendedToday = isTodayInPeriod && remainingDays > 0
     ? Math.max(0, budgetAtStartOfToday / remainingDays)
-    : originalDailyAllowance
+    : isBeforeStart ? originalDailyAllowance : 0
   const remainingToday = recommendedToday - todaysExpenses
   const futureDays = Math.max(remainingDays - 1, 0)
   const nextDailyAllowance = futureDays > 0 && remainingBudget >= 0 ? remainingBudget / futureDays : 0
@@ -167,6 +168,7 @@ export const calculateCategoryBudgetMetrics = ({ category, amount = 0, periodTyp
     status,
     isBeforeStart,
     isAfterEnd,
+    isTodayInPeriod,
     budgetAmount: totalBudget,
     recommendedDailySpend,
     dailyDifference,
