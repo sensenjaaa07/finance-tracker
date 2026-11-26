@@ -106,6 +106,24 @@ function App() {
   }
   function openAddForm(formType) { setActiveForm(formType) }
 
+  // When an existing pay period is renamed by changing its dates, move its
+  // saved category allocations to the new date-based key instead of orphaning them.
+  function updatePayPeriods(nextPeriods) {
+    setPayPeriods(nextPeriods)
+    setCategoryEntriesByMonth((previous) => {
+      const periodKey = (period) => `custom-${period.start}-${period.end}`
+      const removed = payPeriods.find((period) => !nextPeriods.some((item) => periodKey(item) === periodKey(period)))
+      const added = nextPeriods.find((period) => !payPeriods.some((item) => periodKey(item) === periodKey(period)))
+      if (!removed || !added) return previous
+      const oldKey = periodKey(removed)
+      const newKey = periodKey(added)
+      if (!(oldKey in previous) || newKey in previous) return previous
+      const next = { ...previous, [newKey]: previous[oldKey] }
+      delete next[oldKey]
+      return next
+    })
+  }
+
   function updateCategoryAmount(categoryId, amount) {
     const safeAmount = Number(amount); if (!Number.isFinite(safeAmount) || safeAmount < 0) return false
     const categoryDefinition = categoryDefinitions.find(entry => entry.id === categoryId); if (!categoryDefinition) return false
@@ -289,10 +307,10 @@ function App() {
   if (!cloudReady) return <div className="app-container" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', textAlign: 'center' }}><div><h2>{syncStatus === 'offline' ? 'Unable to connect to cloud storage' : 'Loading your finance data…'}</h2><p>{cloudError || 'Reading the latest data from cloud storage.'}</p>{syncStatus === 'offline' && <button type="button" className="header-button" style={{ marginTop: '16px' }} onClick={retryCloudSync}>Retry connection</button>}</div></div>
 
   return <div className="app-container"><Navigation /><main className="content-container"><Routes>
-    <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} allIncomeEntries={incomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} />} />
-    <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} onReallocateBudget={reallocateBudget} availableToAllocate={Math.max(0, monthlyIncomeTotal - currentAllocationTotal)} />} />
-    <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} categoryEntries={categoryEntries} accounts={accountEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} allTransfers={transfers} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} onDeleteTransfer={deleteTransfer} />} />
-    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={accountEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={setPayPeriods} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
+    <Route path="/" element={<Dashboard expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} incomeEntries={filteredIncomeEntries} allIncomeEntries={incomeEntries} categoryEntries={categoryEntries} budgets={budgets} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={updatePayPeriods} />} />
+    <Route path="/budget" element={<Budget categoryEntries={categoryEntries} expenseEntries={filteredExpenseEntries} onOpenAddForm={() => openAddForm('Categories')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={updatePayPeriods} onUpdateCategoryAmount={updateCategoryAmount} onDeleteCategoryEntry={deleteCategoryEntry} onReallocateBudget={reallocateBudget} availableToAllocate={Math.max(0, monthlyIncomeTotal - currentAllocationTotal)} />} />
+    <Route path="/transactions" element={<Transactions expenseEntries={filteredExpenseEntries} allExpenseEntries={expenseEntries} categoryEntries={categoryEntries} accounts={accountEntries} transfers={transfers.filter(transfer => filterExpensesByDate([transfer], monthStart, monthEnd).length > 0)} allTransfers={transfers} onOpenAddForm={() => openAddForm('Expenses')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={updatePayPeriods} onUpdateExpenseEntry={updateExpenseEntry} onDeleteExpenseEntry={deleteExpenseEntry} onDeleteTransfer={deleteTransfer} />} />
+    <Route path="/income" element={<Income incomeEntries={filteredIncomeEntries} accounts={accountEntries} onOpenAddForm={() => openAddForm('Income')} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} budgetCycle={budgetCycle} onBudgetCycleChange={setBudgetCycle} payPeriods={payPeriods} onPayPeriodsChange={updatePayPeriods} onUpdateIncomeEntry={updateIncomeEntry} onDeleteIncomeEntry={deleteIncomeEntry} />} />
     <Route path="/net-worth" element={<Accounts accounts={accountEntries} onOpenAddForm={() => openAddForm('Net-Worth')} onUpdateAccount={updateNetWorthEntry} onAdjustAccountBalance={adjustAccountBalance} onDeleteAccount={deleteNetWorthEntry} onTransfer={handleTransfer} />} />
   </Routes></main>{renderCard()}{toastMessage && <ToastNotification message={toastMessage} onClose={() => setToastMessage('')} />}</div>
 }
