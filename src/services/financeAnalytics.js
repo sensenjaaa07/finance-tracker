@@ -206,61 +206,28 @@ const matchesSelectedPeriod = (dateValue, selectedMonth, rangeKey) => {
   return true
 }
 
-export const calculateExpenseForecast = (expenseEntries = [], monthKeys = [], selectedMonth, rangeKey = '6m') => {
-  if (!monthKeys.length) {
-    return new Map()
-  }
+const getMonthDate = (monthKey) => {
+  const [year, month] = monthKey.split('-').map(Number)
+  return new Date(year, month - 1, 1)
+}
 
-  const historicalMonths = Array.from(aggregateEntriesByMonth(expenseEntries).keys()).sort()
+const shiftMonthKey = (monthKey, offset) => {
+  const date = getMonthDate(monthKey)
+  date.setMonth(date.getMonth() + offset)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
 
-  if (!historicalMonths.length) {
-    return new Map(monthKeys.map((monthKey) => [monthKey, 0]))
-  }
-
-  const categoryTotalsByMonth = new Map()
-  const categoryMonthlyCount = new Map()
-  const categoryTotalSums = new Map()
-
-  historicalMonths.forEach((monthKey) => {
-    const entries = expenseEntries.filter((entry) => monthKeyFromDate(entry.date) === monthKey)
-    const totals = aggregateCategoryTotals(entries)
-
-    categoryTotalsByMonth.set(monthKey, totals)
-
-    totals.forEach((totalAmount, category) => {
-      categoryTotalSums.set(category, (categoryTotalSums.get(category) ?? 0) + totalAmount)
-      categoryMonthlyCount.set(category, (categoryMonthlyCount.get(category) ?? 0) + 1)
-    })
-  })
-
-  const categoryAverages = new Map()
-  categoryTotalSums.forEach((totalAmount, category) => {
-    const observedMonths = categoryMonthlyCount.get(category) ?? 1
-    categoryAverages.set(category, totalAmount / observedMonths)
-  })
-
-  const overallAverage = historicalMonths.reduce((total, monthKey) => {
-    const monthTotal = aggregateEntriesByMonth(expenseEntries).get(monthKey) ?? 0
-    return total + monthTotal
-  }, 0) / historicalMonths.length
-
+// Forecasts use the three calendar months before each plotted month.
+// Months without transactions are deliberately included as zero-spend months.
+export const calculateExpenseForecast = (expenseEntries = [], monthKeys = []) => {
+  const totals = aggregateEntriesByMonth(expenseEntries)
   const forecastByMonth = new Map()
 
   monthKeys.forEach((monthKey) => {
-    const categoryTotal = Array.from(categoryAverages.entries()).reduce((sum, [category, average]) => {
-      const categoryMonthData = categoryTotalsByMonth.get(monthKey)
-      const historicalAverage = categoryMonthData?.get(category) ?? average
-      return sum + historicalAverage
-    }, 0)
-
-    const fallbackValue = categoryAverages.size > 0 ? categoryTotal : overallAverage
-    forecastByMonth.set(monthKey, Number.isFinite(fallbackValue) ? fallbackValue : 0)
+    const previousMonths = [-3, -2, -1].map((offset) => shiftMonthKey(monthKey, offset))
+    const average = previousMonths.reduce((sum, key) => sum + (totals.get(key) ?? 0), 0) / previousMonths.length
+    forecastByMonth.set(monthKey, average)
   })
-
-  if (rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') {
-    const monthlyForecast = forecastByMonth.get(selectedMonth) ?? 0
-    forecastByMonth.set(selectedMonth, monthlyForecast / 2)
-  }
 
   return forecastByMonth
 }
@@ -268,48 +235,35 @@ export const calculateExpenseForecast = (expenseEntries = [], monthKeys = [], se
 export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], selectedMonth, rangeKey = '6m', earliestMonth = selectedMonth }) => {
   if (rangeKey === 'month' || rangeKey === 'fortnightly-1' || rangeKey === 'fortnightly-2') {
     const dayKeys = buildDayKeysForSelectedPeriod(selectedMonth, rangeKey)
-
-    const filteredIncomeEntries = incomeEntries.filter((entry) => {
-      const dayKey = dayKeyFromDate(entry.date)
-      return dayKey && dayKeys.includes(dayKey)
-    })
-
-    const filteredExpenseEntries = expenseEntries.filter((entry) => {
-      const dayKey = dayKeyFromDate(entry.date)
-      return dayKey && dayKeys.includes(dayKey)
-    })
-
+    const filteredIncomeEntries = incomeEntries.filter((entry) => dayKeys.includes(dayKeyFromDate(entry.date)))
+    const filteredExpenseEntries = expenseEntries.filter((entry) => dayKeys.includes(dayKeyFromDate(entry.date)))
     const incomeByDay = aggregateEntriesByDay(filteredIncomeEntries)
     const expenseByDay = aggregateEntriesByDay(filteredExpenseEntries)
 
-    const historicalDayTotals = new Map()
-    const historicalDayCounts = new Map()
-
-    aggregateEntriesByDay(expenseEntries).forEach((total, dayKey) => {
-      const dayNumber = Number(dayKey.split('-')[2])
-      historicalDayTotals.set(dayNumber, (historicalDayTotals.get(dayNumber) ?? 0) + total)
-      historicalDayCounts.set(dayNumber, (historicalDayCounts.get(dayNumber) ?? 0) + 1)
+    const priorMonthKeys = Array.from({ length: 6 }, (_, index) => shiftMonthKey(selectedMonth, index - 6))
+    const priorMonthCountByDay = new Map()
+    const priorSpendByDay = new Map()
+    priorMonthKeys.forEach((monthKey) => {
+      const daysInMonth = new Date(getMonthDate(monthKey).getFullYear(), getMonthDate(monthKey).getMonth() + 1, 0).getDate()
+      const monthEntries = expenseEntries.filter((entry) => monthKeyFromDate(entry.date) === monthKey)
+      const totals = aggregateEntriesByDay(monthEntries)
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        priorMonthCountByDay.set(day, (priorMonthCountByDay.get(day) ?? 0) + 1)
+        const key = `${monthKey}-${String(day).padStart(2, '0')}`
+        priorSpendByDay.set(day, (priorSpendByDay.get(day) ?? 0) + (totals.get(key) ?? 0))
+      }
     })
-
-    const historicalAverageByDay = new Map()
-    historicalDayTotals.forEach((total, dayNumber) => {
-      historicalAverageByDay.set(dayNumber, total / (historicalDayCounts.get(dayNumber) ?? 1))
-    })
-
-    const overallDailyAverage = Array.from(aggregateEntriesByDay(expenseEntries).values()).reduce((sum, total) => sum + total, 0)
-      / Math.max(Array.from(aggregateEntriesByDay(expenseEntries).values()).length, 1)
 
     return dayKeys.map((dayKey) => {
       const date = new Date(`${dayKey}T12:00:00`)
       const dayNumber = date.getDate()
-      const actualExpenses = expenseByDay.get(dayKey) ?? 0
-      const forecastExpenses = actualExpenses > 0 ? 0 : (historicalAverageByDay.get(dayNumber) ?? overallDailyAverage)
-
+      const count = priorMonthCountByDay.get(dayNumber) ?? 0
+      const forecastExpenses = count ? (priorSpendByDay.get(dayNumber) ?? 0) / count : 0
       return {
         month: dayKey,
         label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         income: incomeByDay.get(dayKey) ?? 0,
-        actualExpenses,
+        actualExpenses: expenseByDay.get(dayKey) ?? 0,
         forecastExpenses,
       }
     })
@@ -318,20 +272,15 @@ export const buildTrendData = ({ incomeEntries = [], expenseEntries = [], select
   const monthKeys = buildMonthKeysForRange(selectedMonth, rangeKey, earliestMonth)
   const incomeByMonth = aggregateEntriesByMonth(incomeEntries)
   const expenseByMonth = aggregateEntriesByMonth(expenseEntries)
-  const forecastByMonth = calculateExpenseForecast(expenseEntries, monthKeys, selectedMonth, rangeKey)
+  const forecastByMonth = calculateExpenseForecast(expenseEntries, monthKeys)
 
-  return monthKeys.map((monthKey) => {
-    const actualExpenses = expenseByMonth.get(monthKey) ?? 0
-    const label = formatMonthLabel(monthKey)
-
-    return {
-      month: monthKey,
-      label,
-      income: incomeByMonth.get(monthKey) ?? 0,
-      actualExpenses,
-      forecastExpenses: forecastByMonth.get(monthKey) ?? 0,
-    }
-  })
+  return monthKeys.map((monthKey) => ({
+    month: monthKey,
+    label: formatMonthLabel(monthKey),
+    income: incomeByMonth.get(monthKey) ?? 0,
+    actualExpenses: expenseByMonth.get(monthKey) ?? 0,
+    forecastExpenses: forecastByMonth.get(monthKey) ?? 0,
+  }))
 }
 
 export const buildCategoryBreakdownData = ({ expenseEntries = [], selectedMonth, rangeKey = '6m', earliestMonth = selectedMonth }) => {
