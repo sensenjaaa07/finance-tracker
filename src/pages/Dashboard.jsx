@@ -67,8 +67,24 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
   const analyticsIncomeTotal = visibleIncome.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAllocated = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalSpent = resolvedSelectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === resolvedSelectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-  const overallSpent = expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-  const totalRemaining = totalIncome - overallSpent
+  // Cash left represents unspent allocated budget, not unspent income.
+  // In the All categories view, only expenses assigned to budget categories are
+  // deducted; Uncategorized spending has no category allocation to compare against.
+  const categorizedSpent = categoryEntries.reduce((total, category) => {
+    const categorySpent = expenseEntries
+      .filter((expense) => expense.category === category.name)
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0)
+    return total + categorySpent
+  }, 0)
+  const selectedCategorySpent = selectedCategoryEntry
+    ? expenseEntries.filter((expense) => expense.category === selectedCategoryEntry.name)
+        .reduce((total, expense) => total + Number(expense.amount ?? 0), 0)
+    : 0
+  const totalRemaining = resolvedSelectedCategory === 'all'
+    ? totalAllocated - categorizedSpent
+    : selectedCategoryEntry
+      ? Number(selectedCategoryEntry.amount ?? 0) - selectedCategorySpent
+      : 0
   const selectedCategoryLabel = resolvedSelectedCategory === 'all' ? 'All categories' : resolvedSelectedCategory
   const totalAvailableToAllocate = totalIncome - totalAllocated
 
