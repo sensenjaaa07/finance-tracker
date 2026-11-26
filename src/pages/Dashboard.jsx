@@ -65,12 +65,11 @@ const Dashboard = ({ expenseEntries, incomeEntries, allExpenseEntries = expenseE
   const selectedCategoryEntry = resolvedSelectedCategory === 'all' ? null : categoryEntries.find((category) => category.name === resolvedSelectedCategory) ?? null
   const totalIncome = incomeEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const analyticsIncomeTotal = visibleIncome.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
-  const totalAllocated = categoryEntries.reduce((total, entry) => total + entry.amount, 0)
+  const totalAllocated = categoryEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalSpent = resolvedSelectedCategory === 'all' ? expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0) : expenseEntries.filter((expense) => (expense.category || 'Uncategorized') === resolvedSelectedCategory).reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const overallSpent = expenseEntries.reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalRemaining = totalIncome - overallSpent
   const selectedCategoryLabel = resolvedSelectedCategory === 'all' ? 'All categories' : resolvedSelectedCategory
-  const uncategorizedSpent = expenseEntries.filter((expense) => !expense.category || expense.category === 'Uncategorized').reduce((total, entry) => total + Number(entry.amount ?? 0), 0)
   const totalAvailableToAllocate = totalIncome - totalAllocated
 
   const toggleMetric = (metricKey) => setVisibleMetrics((previousState) => ({ ...previousState, [metricKey]: !previousState[metricKey] }))
