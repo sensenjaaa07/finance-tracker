@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node --test src/services/budgetCalculations.test.js src/services/filterExpensesByDate.test.js src/services/createIncomeFromForm.test.js",
+    "test": "node --test src/services/budgetCalculations.test.js src/services/financeAnalytics.test.js src/services/filterExpensesByDate.test.js src/services/createIncomeFromForm.test.js",
     "test:ui": "npm install --no-save --no-package-lock @playwright/test@1.63.0 && playwright test",
     "prebuild": "chmod +x node_modules/.bin/vite",
     "build": "vite build",
