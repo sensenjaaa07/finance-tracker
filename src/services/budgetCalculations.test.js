@@ -106,3 +106,24 @@ test('handles a future budget period', () => {
   assert.equal(metrics.remainingDays, 15)
   assert.equal(metrics.currentDailyAllowance, 200)
 })
+
+
+test('does not count today spending outside the selected budget period', () => {
+  const metrics = calculateCategoryBudgetMetrics({
+    category: { id: 'food', name: 'Food' },
+    amount: 1500,
+    startDate: '2026-09-01',
+    endDate: '2026-09-15',
+    expenses: [
+      { category: 'Food', amount: 100, date: '2026-09-05' },
+      { category: 'Food', amount: 250, date: '2026-09-20' },
+    ],
+    today: '2026-09-20',
+  })
+
+  assert.equal(metrics.spent, 100)
+  assert.equal(metrics.isTodayInPeriod, false)
+  assert.equal(metrics.todaysExpenses, 0)
+  assert.equal(metrics.todaysAllowance, 0)
+  assert.equal(metrics.remainingToday, 0)
+})
