@@ -1,7 +1,7 @@
 import '../assets/styles/Header.css'
 import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faXmark, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faXmark, faTrashCan, faPen } from '@fortawesome/free-solid-svg-icons'
 
 const getMonthBounds = (monthValue) => {
   const fallback = new Date()
@@ -26,6 +26,7 @@ const periodLabel = (period) => {
 const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonthChange, budgetCycle, onBudgetCycleChange, payPeriods = [], onPayPeriodsChange }) => {
   const customPeriod = parseCustomPeriod(budgetCycle)
   const [periodModalOpen, setPeriodModalOpen] = useState(false)
+  const [editingPeriod, setEditingPeriod] = useState(null)
   const [draftStart, setDraftStart] = useState(customPeriod?.start || getMonthBounds(monthValue).start)
   const [draftEnd, setDraftEnd] = useState(customPeriod?.end || getMonthBounds(monthValue).end)
   const selectedSavedPeriod = payPeriods.find((period) => periodValue(period) === budgetCycle)
@@ -33,6 +34,7 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
   const handlePayPeriodChange = (value) => {
     if (value === 'set-period') {
       const bounds = customPeriod || getMonthBounds(monthValue)
+      setEditingPeriod(null)
       setDraftStart(bounds.start)
       setDraftEnd(bounds.end)
       setPeriodModalOpen(true)
@@ -48,13 +50,25 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
     onBudgetCycleChange?.('monthly')
   }
 
+  const editSelectedPeriod = () => {
+    if (!selectedSavedPeriod) return
+    setEditingPeriod({ ...selectedSavedPeriod })
+    setDraftStart(selectedSavedPeriod.start)
+    setDraftEnd(selectedSavedPeriod.end)
+    setPeriodModalOpen(true)
+  }
+
   const savePeriod = (event) => {
     event.preventDefault()
     if (!draftStart || !draftEnd || draftStart > draftEnd) return
     const period = { start: draftStart, end: draftEnd }
-    const existing = payPeriods.filter((item) => !(item.start === period.start && item.end === period.end))
-    onPayPeriodsChange?.([...existing, period])
+    const duplicate = payPeriods.some((item) => periodValue(item) === periodValue(period) && (!editingPeriod || periodValue(item) !== periodValue(editingPeriod)))
+    if (duplicate) return
+    const existing = payPeriods.filter((item) => !editingPeriod || periodValue(item) !== periodValue(editingPeriod))
+    const updated = existing.some((item) => periodValue(item) === periodValue(period)) ? existing : [...existing, period]
+    onPayPeriodsChange?.(updated)
     onBudgetCycleChange?.(periodValue(period))
+    setEditingPeriod(null)
     setPeriodModalOpen(false)
   }
 
@@ -87,7 +101,12 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
                     {payPeriods.map((period) => <option key={periodValue(period)} value={periodValue(period)}>{periodLabel(period)}</option>)}
                     <option value="set-period">＋ Set period…</option>
                   </select>
-                  {selectedSavedPeriod && <button type="button" className="header-delete-period" onClick={deleteSelectedPeriod} title="Delete selected pay period" aria-label="Delete selected pay period"><FontAwesomeIcon icon={faTrashCan} aria-hidden="true" /></button>}
+                  {selectedSavedPeriod && (
+                    <>
+                      <button type="button" className="header-edit-period" onClick={editSelectedPeriod} title="Edit selected pay period" aria-label="Edit selected pay period"><FontAwesomeIcon icon={faPen} aria-hidden="true" /></button>
+                      <button type="button" className="header-delete-period" onClick={deleteSelectedPeriod} title="Delete selected pay period" aria-label="Delete selected pay period"><FontAwesomeIcon icon={faTrashCan} aria-hidden="true" /></button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -99,10 +118,10 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
         <div className="expense-card-overlay" role="dialog" aria-modal="true" aria-labelledby="set-pay-period-title">
           <form className="add-form edit-form" onSubmit={savePeriod}>
             <div className="add-form-header">
-              <div><p className="header-eyebrow">Budget settings</p><h3 id="set-pay-period-title">Set pay period</h3></div>
-              <button className="add-form-close" type="button" onClick={() => setPeriodModalOpen(false)} aria-label="Close set pay period"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
+              <div><p className="header-eyebrow">Budget settings</p><h3 id="set-pay-period-title">{editingPeriod ? "Edit pay period" : "Set pay period"}</h3></div>
+              <button className="add-form-close" type="button" onClick={() => { setPeriodModalOpen(false); setEditingPeriod(null) }} aria-label="Close pay period editor"><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button>
             </div>
-            <p>Choose the exact dates covered by this paycheck. Saved periods remain available in the Pay period selector, and each period keeps its own budget allocations.</p>
+            <p>Choose the exact dates covered by this paycheck. Editing a saved period keeps its budget allocations attached to the updated dates.</p>
             <div className="add-form-fields">
               <label className="add-form-label" htmlFor="pay-period-start">Period starts</label>
               <input id="pay-period-start" type="date" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} required />
@@ -112,7 +131,7 @@ const Header = ({ pageTitle, onOpenAddForm, showMonthFilter, monthValue, onMonth
             </div>
             <div className="budget-card-actions edit-action-row">
               <button type="button" className="budget-card-button budget-card-button-cancel" onClick={() => setPeriodModalOpen(false)}>Cancel</button>
-              <button type="submit" className="budget-card-button budget-card-button-save" disabled={!draftStart || !draftEnd || draftStart > draftEnd}>Save pay period</button>
+              <button type="submit" className="budget-card-button budget-card-button-save" disabled={!draftStart || !draftEnd || draftStart > draftEnd}>{editingPeriod ? "Save changes" : "Save pay period"}</button>
             </div>
           </form>
         </div>
